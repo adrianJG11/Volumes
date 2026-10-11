@@ -34,3 +34,10 @@
 - No muestres secretos ni modifiques credenciales.
 - Pide confirmación antes de eliminar contenido, publicar, enviar mensajes, conceder permisos amplios o instalar servidores MCP externos.
 - No hagas push directo a main ni reescribas historial. Realiza commits, publicaciones o despliegues solo dentro del alcance autorizado.
+
+## Flujo de GitHub
+- Sigue CONTRIBUTING.md: issue para funcionalidades/bugs, rama corta, validación y PR hacia main.
+- Antes de empezar una implementación, comprueba si ya existe una rama para esa tarea. No trabajes directamente sobre main.
+- Para validar una PR usa `mvn --batch-mode --no-transfer-progress verify` y ejecuta Main; informa que no existe suite de tests mientras sea así.
+- No publiques ramas, issues o PR, ni hagas merge o cambies ajustes remotos, sin confirmación del usuario.
+- No confundas archivos locales de CI con una ejecución de GitHub Actions o una protección remota ya verificada.

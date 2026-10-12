@@ -20,16 +20,26 @@ public class Main {
         String title = IO.readln("Book title: ");
         String author = IO.readln("Book author: ");
         String genre = IO.readln("Book genre: ");
-        String pagesInput = IO.readln("Page count: ");
         int pages;
-        try {
-            pages = Integer.parseInt(pagesInput);
-        } catch (NumberFormatException e) {
-            IO.println("Invalid page count. Please enter a whole number, such as 350.");
-            return;
-        }
 
-        IO.println(title + " — " + author);
+        while (true) {
+            String pagesInput = IO.readln("Page count: ");
+            if (pagesInput == null) {
+                IO.println("Input ended. No book was added.");
+                return;
+            }
+
+            try {
+                pages = Integer.parseInt(pagesInput);
+                if (pages <= 0) {
+                    IO.println("Page count must be greater than zero.");
+                    continue;
+                }
+                break;
+            } catch (NumberFormatException e) {
+                IO.println("Invalid page count. Please enter a whole number, such as 350.");
+            }
+        }
 
         Book enteredBook = new Book(title, author, genre, pages);
 

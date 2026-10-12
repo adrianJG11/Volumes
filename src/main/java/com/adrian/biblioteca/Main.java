@@ -1,5 +1,7 @@
 package com.adrian.biblioteca;
 
+import com.adrian.biblioteca.book.Book;
+
 public class Main {
     public static void main(String[] args) {
         // Example page counts; actual counts depend on the edition.

@@ -17,7 +17,32 @@ public class Main {
             800
         );
 
-        System.out.println(firstBook.title + " — " + firstBook.author);
-        System.out.println(secondBook.title + " — " + secondBook.author);
+        String title = IO.readln("Book title: ");
+        String author = IO.readln("Book author: ");
+        String genre = IO.readln("Book genre: ");
+        String pagesInput = IO.readln("Page count: ");
+        int pages;
+        try {
+            pages = Integer.parseInt(pagesInput);
+        } catch (NumberFormatException e) {
+            IO.println("Invalid page count. Please enter a whole number, such as 350.");
+            return;
+        }
+
+        IO.println(title + " — " + author);
+
+        Book enteredBook = new Book(title, author, genre, pages);
+
+        Library library = new Library();
+
+        IO.println("Empty library:");
+        library.listBooks();
+        IO.println("End of empty library check");
+
+        library.addBook(firstBook);
+        library.addBook(secondBook);
+        library.addBook(enteredBook);
+        library.listBooks();
     }
+
 }

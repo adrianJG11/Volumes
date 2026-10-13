@@ -33,4 +33,9 @@ jobs:
       - name: Verify with Maven
         run: mvn --batch-mode --no-transfer-progress verify
       - name: Run console application
-        run: java -cp target/classes com.adrian.biblioteca.Main
+        run: |
+          printf '2\n1\nCI book\nCI author\nFiction\n100\n2\n0\n' | timeout 15s java -cp target/classes com.adrian.biblioteca.Main > /tmp/biblioteca-smoke.txt
+          cat /tmp/biblioteca-smoke.txt
+          grep -Fq 'Your library is empty.' /tmp/biblioteca-smoke.txt
+          grep -Fq 'CI book — CI author | Fiction | 100 pages' /tmp/biblioteca-smoke.txt
+          grep -Fq 'Goodbye!' /tmp/biblioteca-smoke.txt

@@ -1,30 +1,32 @@
-# AGENTS.md — Biblioteca personal
+# AGENTS.md — Volumes
 
 ## Contexto y alcance
 - Este repositorio es un proyecto personal de aprendizaje y una biblioteca en construcción.
-- Aplicación de consola con Java 25 y Maven, bajo `com.adrian.biblioteca`: `Main`, `book.Book`, `library.Library` y `cli.LibraryConsole`.
+- Volumes usa Java 25, Maven y Spring Boot: `VolumesApplication` inicia la API; `Main` mantiene la consola. Los paquetes están bajo `com.adrian.volumes`.
 - Comprueba el código, README y pom.xml al empezar: el proyecto puede evolucionar.
-- Spring Boot y recomendaciones/IA en Python son posibles fases futuras, no dependencias ni requisitos actuales. No introduzcas servicios, persistencia ni infraestructura por anticipado.
+- La API Spring Boot gestiona el catálogo en memoria. Próximas fases acordadas: PostgreSQL y usuarios, frontend y después recomendador/agente en Python. No introduzcas esas dependencias por anticipado.
 - MyVault es otro proyecto y está terminado; no mezcles sus datos, requisitos ni tareas.
 
 ## Colaboración y aprendizaje
-- Responde en español y explica las decisiones técnicas con ejemplos concretos.
+- Responde en inglés salvo petición del usuario de otro idioma y explica las decisiones técnicas con ejemplos concretos.
 - Para consultas o ejercicios, ofrece primero una explicación y pistas; deja que el usuario practique. Cuando solicite implementación, realiza el cambio acotado y explica cómo funciona y cómo comprobarlo.
 - Trabaja en pasos pequeños y verificables. Pregunta solo por decisiones que bloqueen el paso actual.
 - Reutiliza lo existente. Justifica nuevas dependencias y evita refactorizaciones ajenas al objetivo.
 - No inventes progreso ni marques tareas como terminadas sin una comprobación.
 
 ## Entorno y desarrollo
-- Entorno actual: Ubuntu en WSL, repositorio en `/home/adrian/projects/biblioteca`.
+- Entorno actual: Ubuntu en WSL, checkout en `/home/adrian/projects/biblioteca` (carpeta conservada tras renombrar el proyecto a Volumes). GitHub: `adrianJG11/Volumes`.
 - Ejecuta Java, Maven y Git dentro de WSL. La carpeta de Windows llamada `biblioteca python+java` no es esta copia del repositorio.
 - Usa las versiones y convenciones declaradas en pom.xml. No cambies el JDK ni agregues un framework sin una necesidad acordada.
 - No edites `target/` ni archivos `.class`: son resultados de compilación.
 - Consulta documentación oficial cuando una decisión dependa de versiones o compatibilidad.
 
 ## Verificación
+- API: `mvn spring-boot:run`; empaquetado: `mvn verify` y `java -jar target/volumes-0.1.0-SNAPSHOT.jar`.
+- Smoke HTTP: `python3 scripts/smoke_api.py`, tras empaquetar. Usa un puerto local temporal y detiene su servidor.
 - Para cambios Java, desde la raíz: `mvn compile`.
-- Prueba de ejecución actual: `java -cp target/classes com.adrian.biblioteca.Main`.
-- Hay tests JUnit Jupiter en `src/test/java` para Book, Library y LibraryConsole. Ejecuta `mvn test` o `mvn verify` y comprueba que Surefire descubre y ejecuta los tests. No hay herramienta de lint configurada.
+- Prueba de consola: `java -cp target/classes com.adrian.volumes.Main`.
+- Hay tests JUnit Jupiter en `src/test/java` para el modelo, catálogo, consola y endpoints HTTP. Ejecuta `mvn test` o `mvn verify` y comprueba que Surefire descubre y ejecuta los tests. No hay herramienta de lint configurada.
 - Añade pruebas de comportamiento con JUnit Jupiter cuando la lógica lo justifique. No añadas tests de relleno.
 - Revisa `git diff --check`, `git diff` y `git status --short`; informa qué comprobaste y qué quedó pendiente.
 

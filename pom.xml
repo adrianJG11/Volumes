@@ -12,8 +12,10 @@
     </parent>
 
     <groupId>com.adrian</groupId>
-    <artifactId>biblioteca</artifactId>
+    <artifactId>volumes</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <name>Volumes</name>
+    <description>Personal book catalog and reading library</description>
 
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
@@ -42,7 +44,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.adrian.biblioteca.BibliotecaApplication</mainClass>
+                    <mainClass>com.adrian.volumes.VolumesApplication</mainClass>
                 </configuration>
             </plugin>
             <plugin>

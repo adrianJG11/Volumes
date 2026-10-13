@@ -1,4 +1,4 @@
-package com.adrian.biblioteca.book;
+package com.adrian.volumes.book;
 
 import org.springframework.stereotype.Service;
 
@@ -27,6 +27,16 @@ public class BookCatalog {
 
     public synchronized List<Entry> listBooks() {
         return List.copyOf(books.values());
+    }
+
+    public synchronized Optional<Entry> update(UUID id, String title, String author, String genre, int pages) {
+        if (!books.containsKey(id)) {
+            return Optional.empty();
+        }
+        Book replacement = new Book(title, author, genre, pages);
+        Entry entry = new Entry(id, replacement);
+        books.put(id, entry);
+        return Optional.of(entry);
     }
 
     public synchronized Optional<Entry> findById(UUID id) {

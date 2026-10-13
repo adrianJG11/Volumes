@@ -1,7 +1,7 @@
-package com.adrian.biblioteca.cli;
+package com.adrian.volumes.cli;
 
-import com.adrian.biblioteca.book.Book;
-import com.adrian.biblioteca.library.Library;
+import com.adrian.volumes.book.Book;
+import com.adrian.volumes.library.Library;
 
 import java.util.Objects;
 import java.util.function.Consumer;

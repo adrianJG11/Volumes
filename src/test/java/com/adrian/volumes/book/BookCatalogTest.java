@@ -1,4 +1,4 @@
-package com.adrian.biblioteca.book;
+package com.adrian.volumes.book;
 
 import org.junit.jupiter.api.Test;
 import java.util.HashSet;
@@ -30,6 +30,38 @@ class BookCatalogTest {
         BookCatalog catalog = new BookCatalog();
         assertThrows(IllegalArgumentException.class, () -> catalog.create(" ", "Author", "Fiction", 1));
         assertThrows(IllegalArgumentException.class, () -> catalog.create("Title", "Author", "Fiction", 0));
+        assertTrue(catalog.listBooks().isEmpty());
+    }
+
+    @Test
+    void replacesFieldsButPreservesIdOrderAndEarlierSnapshots() {
+        BookCatalog catalog = new BookCatalog();
+        var first = catalog.create("First", "Author", "Fiction", 100);
+        var second = catalog.create("Second", "Author", "Fiction", 200);
+        var before = catalog.listBooks();
+        var updated = catalog.update(first.id(), " Updated ", "New Author", "History", 300).orElseThrow();
+        assertEquals(first.id(), updated.id());
+        assertEquals("Updated", updated.book().getTitle());
+        assertEquals("New Author", updated.book().getAuthor());
+        assertEquals("History", updated.book().getGenre());
+        assertEquals(300, updated.book().getPages());
+        assertEquals(List.of(updated, second), catalog.listBooks());
+        assertEquals("First", before.getFirst().book().getTitle());
+    }
+
+    @Test
+    void invalidUpdateLeavesExistingBookUnchanged() {
+        BookCatalog catalog = new BookCatalog();
+        var original = catalog.create("Title", "Author", "Genre", 100);
+        assertThrows(IllegalArgumentException.class,
+            () -> catalog.update(original.id(), "Changed", "Author", "Genre", 0));
+        assertEquals(original, catalog.findById(original.id()).orElseThrow());
+    }
+
+    @Test
+    void updatingUnknownIdDoesNotCreateABook() {
+        BookCatalog catalog = new BookCatalog();
+        assertTrue(catalog.update(UUID.randomUUID(), "Title", "Author", "Genre", 100).isEmpty());
         assertTrue(catalog.listBooks().isEmpty());
     }
 

@@ -34,8 +34,11 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress verify
       - name: Run console application
         run: |
-          printf '2\n1\nCI book\nCI author\nFiction\n100\n2\n0\n' | timeout 15s java -cp target/classes com.adrian.biblioteca.Main > /tmp/biblioteca-smoke.txt
-          cat /tmp/biblioteca-smoke.txt
-          grep -Fq 'Your library is empty.' /tmp/biblioteca-smoke.txt
-          grep -Fq 'CI book — CI author | Fiction | 100 pages' /tmp/biblioteca-smoke.txt
-          grep -Fq 'Goodbye!' /tmp/biblioteca-smoke.txt
+          printf '2\n1\nCI book\nCI author\nFiction\n100\n2\n0\n' | timeout 15s java -cp target/classes com.adrian.volumes.Main > /tmp/volumes-smoke.txt
+          cat /tmp/volumes-smoke.txt
+          grep -Fq 'Your library is empty.' /tmp/volumes-smoke.txt
+          grep -Fq 'CI book — CI author | Fiction | 100 pages' /tmp/volumes-smoke.txt
+          grep -Fq 'Goodbye!' /tmp/volumes-smoke.txt
+
+      - name: Run packaged API smoke check
+        run: python3 scripts/smoke_api.py

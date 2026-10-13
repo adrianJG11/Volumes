@@ -1,4 +1,4 @@
-package com.adrian.biblioteca.book.api;
+package com.adrian.volumes.book.api;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -88,6 +88,44 @@ class BookControllerTest {
             assertTrue(response.headers().firstValue("Content-Type").orElse("").contains("json"));
             assertEquals(400, json.readTree(response.body()).get("status").asInt());
         }
+        assertEquals("[]", request("GET", "/books", null).body());
+    }
+
+    @Test
+    void putReplacesAllFieldsPreservingIdentity() throws Exception {
+        var created = request("POST", "/books", VALID);
+        var original = json.readValue(created.body(), BookResponse.class);
+        String path = "/books/" + original.id();
+        String replacement = """
+            {"title":"  The Idiot  ","author":"Dostoevsky","genre":"Literary fiction","pages":600}
+            """;
+        var response = request("PUT", path, replacement);
+        assertEquals(200, response.statusCode(), response.body());
+        var expected = new BookResponse(original.id(), "The Idiot", "Dostoevsky", "Literary fiction", 600);
+        assertEquals(expected, json.readValue(response.body(), BookResponse.class));
+        assertEquals(expected, json.readValue(request("GET", path, null).body(), BookResponse.class));
+        assertArrayEquals(new BookResponse[]{expected},
+            json.readValue(request("GET", "/books", null).body(), BookResponse[].class));
+        assertEquals(expected, json.readValue(request("PUT", path, replacement).body(), BookResponse.class));
+    }
+
+    @Test
+    void invalidPutDoesNotModifyExistingBook() throws Exception {
+        var original = json.readValue(request("POST", "/books", VALID).body(), BookResponse.class);
+        String path = "/books/" + original.id();
+        for (String invalid : new String[]{"{}", "{", VALID.replace("350", "0"),
+                VALID.replace("350", "3.5"), VALID.replace("Fyodor Dostoevsky", " ")}) {
+            var response = request("PUT", path, invalid);
+            assertEquals(400, response.statusCode(), response.body());
+            assertEquals(original, json.readValue(request("GET", path, null).body(), BookResponse.class));
+        }
+    }
+
+    @Test
+    void putToUnknownIdReturns404WithoutCreatingBook() throws Exception {
+        var response = request("PUT", "/books/" + UUID.randomUUID(), VALID);
+        assertEquals(404, response.statusCode());
+        assertEquals(400, request("PUT", "/books/not-a-uuid", VALID).statusCode());
         assertEquals("[]", request("GET", "/books", null).body());
     }
 

@@ -1,6 +1,6 @@
-package com.adrian.biblioteca.book.api;
+package com.adrian.volumes.book.api;
 
-import com.adrian.biblioteca.book.BookCatalog;
+import com.adrian.volumes.book.BookCatalog;
 import java.util.UUID;
 
 public record BookResponse(UUID id, String title, String author, String genre, int pages) {

@@ -1,4 +1,4 @@
-package com.adrian.biblioteca.book;
+package com.adrian.volumes.book;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

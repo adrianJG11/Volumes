@@ -1,4 +1,4 @@
-# Trabajar en la biblioteca
+# Trabajar en Volumes
 
 Usamos un flujo pequeño: issue, rama, cambio, validación, pull request y merge.
 Mantén una sola rama de trabajo activa mientras aprendes.
@@ -23,11 +23,13 @@ No necesitas una rama permanente develop.
 
 ```bash
 mvn --batch-mode --no-transfer-progress verify
-java -cp target/classes com.adrian.biblioteca.Main
+java -cp target/classes com.adrian.volumes.Main
 git diff --check
 git diff
 git status --short
 ```
+
+La API se inicia con `mvn spring-boot:run`; el smoke del JAR es `python3 scripts/smoke_api.py` tras empaquetar.
 
 Los tests de JUnit Jupiter están en `src/test/java`. `mvn test` los ejecuta; `mvn verify` también compila y empaqueta. Comprueba que Surefire descubre los tests y que no hay fallos.
 La ejecución de Main permite comprobar el menú manualmente; en CI se utiliza entrada determinista para añadir, listar y salir. Añade tests de comportamiento cuando la lógica lo justifique.

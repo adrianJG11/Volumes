@@ -1,4 +1,4 @@
-package com.adrian.biblioteca.book;
+package com.adrian.volumes.book;
 
 public class Book {
     private final String title;

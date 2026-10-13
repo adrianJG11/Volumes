@@ -1,4 +1,4 @@
-package com.adrian.biblioteca.book.api;
+package com.adrian.volumes.book.api;
 
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;

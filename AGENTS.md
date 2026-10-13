@@ -2,7 +2,7 @@
 
 ## Contexto y alcance
 - Este repositorio es un proyecto personal de aprendizaje y una biblioteca en construcción.
-- Estado inicial verificado: aplicación de consola con Java 25, Maven, `Book` y `Main`, bajo `com.adrian.biblioteca`.
+- Aplicación de consola con Java 25 y Maven, bajo `com.adrian.biblioteca`: `Main`, `book.Book`, `library.Library` y `cli.LibraryConsole`.
 - Comprueba el código, README y pom.xml al empezar: el proyecto puede evolucionar.
 - Spring Boot y recomendaciones/IA en Python son posibles fases futuras, no dependencias ni requisitos actuales. No introduzcas servicios, persistencia ni infraestructura por anticipado.
 - MyVault es otro proyecto y está terminado; no mezcles sus datos, requisitos ni tareas.
@@ -24,8 +24,8 @@
 ## Verificación
 - Para cambios Java, desde la raíz: `mvn compile`.
 - Prueba de ejecución actual: `java -cp target/classes com.adrian.biblioteca.Main`.
-- Actualmente no hay suite de tests ni herramientas de lint configuradas. No presentes `mvn test` como cobertura de pruebas si no hay tests.
-- Añade pruebas de comportamiento cuando la lógica lo justifique y acuerda la herramienta al introducirla. No añadas tests de relleno.
+- Hay tests JUnit Jupiter en `src/test/java` para Book, Library y LibraryConsole. Ejecuta `mvn test` o `mvn verify` y comprueba que Surefire descubre y ejecuta los tests. No hay herramienta de lint configurada.
+- Añade pruebas de comportamiento con JUnit Jupiter cuando la lógica lo justifique. No añadas tests de relleno.
 - Revisa `git diff --check`, `git diff` y `git status --short`; informa qué comprobaste y qué quedó pendiente.
 
 ## Cuidado de los cambios
@@ -38,6 +38,6 @@
 ## Flujo de GitHub
 - Sigue CONTRIBUTING.md: issue para funcionalidades/bugs, rama corta, validación y PR hacia main.
 - Antes de empezar una implementación, comprueba si ya existe una rama para esa tarea. No trabajes directamente sobre main.
-- Para validar una PR usa `mvn --batch-mode --no-transfer-progress verify` y ejecuta Main; informa que no existe suite de tests mientras sea así.
+- Para validar una PR usa `mvn --batch-mode --no-transfer-progress verify` y ejecuta Main con entrada de menú determinista; informa del resultado de los tests y del smoke check.
 - No publiques ramas, issues o PR, ni hagas merge o cambies ajustes remotos, sin confirmación del usuario.
 - No confundas archivos locales de CI con una ejecución de GitHub Actions o una protección remota ya verificada.

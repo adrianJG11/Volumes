@@ -29,8 +29,8 @@ git diff
 git status --short
 ```
 
-Actualmente no hay tests automatizados. Maven compila y empaqueta; la ejecución de Main comprueba que la aplicación arranca.
-Introduce tests de comportamiento cuando añadas lógica que los justifique; no confundas un build correcto con cobertura de pruebas.
+Los tests de JUnit Jupiter están en `src/test/java`. `mvn test` los ejecuta; `mvn verify` también compila y empaqueta. Comprueba que Surefire descubre los tests y que no hay fallos.
+La ejecución de Main permite comprobar el menú manualmente; en CI se utiliza entrada determinista para añadir, listar y salir. Añade tests de comportamiento cuando la lógica lo justifique.
 
 Añade solo los archivos de la tarea y revisa lo que entrará en el commit:
 

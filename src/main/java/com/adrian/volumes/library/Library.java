@@ -1,6 +1,6 @@
-package com.adrian.biblioteca.library;
+package com.adrian.volumes.library;
 
-import com.adrian.biblioteca.book.Book;
+import com.adrian.volumes.book.Book;
 
 import java.util.ArrayList;
 import java.util.List;

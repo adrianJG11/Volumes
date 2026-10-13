@@ -1,7 +1,7 @@
-package com.adrian.biblioteca;
+package com.adrian.volumes;
 
-import com.adrian.biblioteca.cli.LibraryConsole;
-import com.adrian.biblioteca.library.Library;
+import com.adrian.volumes.cli.LibraryConsole;
+import com.adrian.volumes.library.Library;
 
 public class Main {
     public static void main(String[] args) {

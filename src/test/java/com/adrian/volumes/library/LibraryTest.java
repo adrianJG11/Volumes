@@ -1,6 +1,6 @@
-package com.adrian.biblioteca.library;
+package com.adrian.volumes.library;
 
-import com.adrian.biblioteca.book.Book;
+import com.adrian.volumes.book.Book;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 

@@ -1,6 +1,6 @@
-package com.adrian.biblioteca.cli;
+package com.adrian.volumes.cli;
 
-import com.adrian.biblioteca.library.Library;
+import com.adrian.volumes.library.Library;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;

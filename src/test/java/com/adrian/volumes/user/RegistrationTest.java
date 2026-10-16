@@ -32,10 +32,8 @@ class RegistrationTest {
     private static final String PASSWORD = " a long passphrase with spaces ";
 
     private HttpResponse<String> post(String body) throws Exception {
-        try (var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()) {
-            return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/auth/register"))
-                .timeout(Duration.ofSeconds(15)).header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+        try (var client = new com.adrian.volumes.support.ApiClient(port)) {
+            return client.request("POST", "/auth/register", body);
         }
     }
 

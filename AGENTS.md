@@ -4,7 +4,7 @@
 - Este repositorio es un proyecto personal de aprendizaje y una biblioteca en construcción.
 - Volumes usa Java 25, Maven y Spring Boot: `VolumesApplication` inicia la API; `Main` mantiene la consola. Los paquetes están bajo `com.adrian.volumes`.
 - Comprueba el código, README y pom.xml al empezar: el proyecto puede evolucionar.
-- La API Spring Boot gestiona el catálogo en memoria. Próximas fases acordadas: PostgreSQL y usuarios, frontend y después recomendador/agente en Python. No introduzcas esas dependencias por anticipado.
+- La API Spring Boot persiste el catálogo en PostgreSQL mediante BookRepository y Spring JDBC; Flyway gestiona el esquema. La consola mantiene su biblioteca en memoria. Próximas fases acordadas: usuarios, frontend y después recomendador/agente en Python. No introduzcas esas dependencias por anticipado.
 - MyVault es otro proyecto y está terminado; no mezcles sus datos, requisitos ni tareas.
 
 ## Colaboración y aprendizaje
@@ -22,8 +22,10 @@
 - Consulta documentación oficial cuando una decisión dependa de versiones o compatibilidad.
 
 ## Verificación
+- Docker debe estar activo. Inicia PostgreSQL local con `docker compose up -d --wait`; configura `.env` siguiendo README. No muestres sus credenciales.
+- Los tests de catálogo, esquema y HTTP usan el perfil test con PostgreSQL desechable de Testcontainers; nunca deben usar la base de desarrollo.
 - API: `mvn spring-boot:run`; empaquetado: `mvn verify` y `java -jar target/volumes-0.1.0-SNAPSHOT.jar`.
-- Smoke HTTP: `python3 scripts/smoke_api.py`, tras empaquetar. Usa un puerto local temporal y detiene su servidor.
+- Smoke HTTP: `python3 scripts/smoke_api.py`, tras empaquetar. Usa PostgreSQL desechable y un puerto local temporal; verifica persistencia tras reiniciar la API y recrear PostgreSQL conservando el volumen. Usa compose.yaml con un nombre de proyecto único y elimina solo los recursos de ese proyecto temporal al terminar.
 - Para cambios Java, desde la raíz: `mvn compile`.
 - Prueba de consola: `java -cp target/classes com.adrian.volumes.Main`.
 - Hay tests JUnit Jupiter en `src/test/java` para el modelo, catálogo, consola y endpoints HTTP. Ejecuta `mvn test` o `mvn verify` y comprueba que Surefire descubre y ejecuta los tests. No hay herramienta de lint configurada.

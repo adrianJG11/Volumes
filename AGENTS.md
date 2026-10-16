@@ -4,7 +4,7 @@
 - Este repositorio es un proyecto personal de aprendizaje y una biblioteca en construcción.
 - Volumes usa Java 25, Maven y Spring Boot: `VolumesApplication` inicia la API; `Main` mantiene la consola. Los paquetes están bajo `com.adrian.volumes`.
 - Comprueba el código, README y pom.xml al empezar: el proyecto puede evolucionar.
-- La API Spring Boot persiste el catálogo en PostgreSQL mediante BookRepository y Spring JDBC; Flyway gestiona el esquema. La consola mantiene su biblioteca en memoria. Próximas fases acordadas: usuarios, frontend y después recomendador/agente en Python. No introduzcas esas dependencias por anticipado.
+- La API Spring Boot persiste el catálogo en PostgreSQL mediante BookRepository y Spring JDBC; Flyway gestiona el esquema. La consola mantiene su biblioteca en memoria. Cuentas y bibliotecas personales usan PostgreSQL y sesiones Spring Security. Próximas fases: completar datos del MVP (valoraciones/preferencias según se acuerde), frontend y después recomendador/agente en Python. No introduzcas esas dependencias por anticipado.
 - MyVault es otro proyecto y está terminado; no mezcles sus datos, requisitos ni tareas.
 
 ## Colaboración y aprendizaje
@@ -25,9 +25,11 @@
 - Docker debe estar activo. Inicia PostgreSQL local con `docker compose up -d --wait`; configura `.env` siguiendo README. No muestres sus credenciales.
 - Los tests de catálogo, esquema y HTTP usan el perfil test con PostgreSQL desechable de Testcontainers; nunca deben usar la base de desarrollo.
 - API: `mvn spring-boot:run`; empaquetado: `mvn verify` y `java -jar target/volumes-0.1.0-SNAPSHOT.jar`.
-- Smoke HTTP: `python3 scripts/smoke_api.py`, tras empaquetar. Usa PostgreSQL desechable y un puerto local temporal; verifica persistencia tras reiniciar la API y recrear PostgreSQL conservando el volumen. Usa compose.yaml con un nombre de proyecto único y elimina solo los recursos de ese proyecto temporal al terminar.
+- Smoke HTTP: `python3 scripts/smoke_api.py`, tras empaquetar. Usa PostgreSQL desechable y un puerto local temporal; verifica cuentas, catálogo y bibliotecas personales tras reiniciar la API y recrear PostgreSQL conservando el volumen; las sesiones no sobreviven al reinicio. Usa compose.yaml con un nombre de proyecto único y elimina solo los recursos de ese proyecto temporal al terminar.
 - Para cambios Java, desde la raíz: `mvn compile`.
 - Prueba de consola: `java -cp target/classes com.adrian.volumes.Main`.
+- Autenticación: sesiones Spring Security, login con formulario en /auth/login, CSRF obligatorio para mutaciones (incluidos registro/login/logout). GET /auth/csrf proporciona el token; renovarlo tras login/logout. GET /auth/me devuelve la identidad autenticada.
+- Catálogo colaborativo: GET público; POST/PUT requieren sesión y CSRF. GET/POST/PATCH/DELETE /me/library aplican filtros por propietario desde el principal autenticado; nunca aceptar un userId del cliente. Las sesiones son en memoria y expiran al reiniciar la API.
 - Hay tests JUnit Jupiter en `src/test/java` para el modelo, catálogo, consola y endpoints HTTP. Ejecuta `mvn test` o `mvn verify` y comprueba que Surefire descubre y ejecuta los tests. No hay herramienta de lint configurada.
 - Añade pruebas de comportamiento con JUnit Jupiter cuando la lógica lo justifique. No añadas tests de relleno.
 - Revisa `git diff --check`, `git diff` y `git status --short`; informa qué comprobaste y qué quedó pendiente.

@@ -30,6 +30,10 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Check database test runtime
+        run: |
+          docker info > /dev/null
+          docker compose version
       - name: Verify with Maven
         run: mvn --batch-mode --no-transfer-progress verify
       - name: Run console application
@@ -40,5 +44,5 @@ jobs:
           grep -Fq 'CI book — CI author | Fiction | 100 pages' /tmp/volumes-smoke.txt
           grep -Fq 'Goodbye!' /tmp/volumes-smoke.txt
 
-      - name: Run packaged API smoke check
+      - name: Verify packaged API and database persistence
         run: python3 scripts/smoke_api.py

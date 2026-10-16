@@ -1,4 +1,7 @@
 """Check the packaged Volumes API using only Python's standard library."""
+from contextlib import contextmanager
+import os
+import secrets
 import json
 from pathlib import Path
 import re
@@ -7,6 +10,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,15 +51,50 @@ def check_api(base_url):
     request("GET", "/books/00000000-0000-0000-0000-000000000000", 404)
     request("GET", "/books/not-a-uuid", 400)
     print("PASS: packaged Volumes API creates, lists, retrieves, updates, and rejects invalid input")
+    return updated
 
 
-def main():
-    if not JAR.is_file():
-        raise SystemExit("Run mvn verify first to build the executable JAR.")
+@contextmanager
+def temporary_database():
+    # Exercise the real Compose configuration under a unique project and volume.
+    # Never stop, recreate, or remove the developer's "volumes" project.
+    password = secrets.token_hex(24)
+    environment = dict(os.environ, POSTGRES_PASSWORD=password, POSTGRES_PORT="0")
+    project = "volumes-smoke-" + uuid.uuid4().hex
+    compose = ["docker", "compose", "--project-name", project,
+               "--file", str(ROOT / "compose.yaml")]
+
+    def command(*args):
+        return subprocess.check_output(compose + list(args), cwd=ROOT,
+                                       env=environment, text=True).strip()
+
+    def start(recreate=False):
+        previous = command("ps", "--quiet", "postgres") if recreate else None
+        flags = ["--force-recreate"] if recreate else []
+        command("up", "--detach", "--wait", "--wait-timeout", "60", *flags)
+        if recreate:
+            assert command("ps", "--quiet", "postgres") != previous
+        address = command("port", "postgres", "5432")
+        port = address.rsplit(":", 1)[1]
+        return dict(os.environ,
+                    SPRING_DATASOURCE_URL=f"jdbc:postgresql://127.0.0.1:{port}/volumes",
+                    SPRING_DATASOURCE_USERNAME="volumes",
+                    SPRING_DATASOURCE_PASSWORD=password,
+                    SPRING_PROFILES_ACTIVE="")
+
+    try:
+        yield start(), lambda: start(recreate=True)
+    finally:
+        # Only remove the uniquely named test project's disposable resources.
+        command("down", "--volumes")
+
+
+@contextmanager
+def running_api(environment):
     with tempfile.TemporaryFile(mode="w+") as log:
         process = subprocess.Popen(
             ["java", "-jar", str(JAR), "--server.address=127.0.0.1", "--server.port=0"],
-            cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+            cwd=ROOT, env=environment, stdout=log, stderr=subprocess.STDOUT)
         try:
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline:
@@ -63,7 +102,7 @@ def main():
                 output = log.read()
                 match = re.search(r"Tomcat started on port (\d+)", output)
                 if match:
-                    check_api("http://127.0.0.1:" + match.group(1))
+                    yield "http://127.0.0.1:" + match.group(1)
                     return
                 if process.poll() is not None:
                     raise RuntimeError("API exited before startup")
@@ -80,6 +119,28 @@ def main():
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
+
+
+def assert_persisted(base_url, expected):
+    with urllib.request.urlopen(base_url + "/books/" + expected["id"], timeout=5) as response:
+        assert json.load(response) == expected
+    with urllib.request.urlopen(base_url + "/books", timeout=5) as response:
+        assert json.load(response) == [expected]
+
+
+def main():
+    if not JAR.is_file():
+        raise SystemExit("Run mvn verify first to build the executable JAR.")
+    with temporary_database() as (environment, recreate_database):
+        with running_api(environment) as base_url:
+            expected = check_api(base_url)
+        with running_api(environment) as base_url:
+            assert_persisted(base_url, expected)
+            print("PASS: book identity and updated fields survive an API restart")
+        environment = recreate_database()
+        with running_api(environment) as base_url:
+            assert_persisted(base_url, expected)
+            print("PASS: books survive database container recreation with the named volume retained")
 
 
 if __name__ == "__main__":

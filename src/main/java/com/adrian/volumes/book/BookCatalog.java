@@ -2,9 +2,7 @@ package com.adrian.volumes.book;
 
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,34 +10,27 @@ import java.util.UUID;
 public class BookCatalog {
     public record Entry(UUID id, Book book) {}
 
-    private final Map<UUID, Entry> books = new LinkedHashMap<>();
+    private final BookRepository repository;
 
-    public synchronized Entry create(String title, String author, String genre, int pages) {
+    public BookCatalog(BookRepository repository) {
+        this.repository = repository;
+    }
+
+    public Entry create(String title, String author, String genre, int pages) {
         Book book = new Book(title, author, genre, pages);
-        UUID id;
-        do {
-            id = UUID.randomUUID();
-        } while (books.containsKey(id));
-        Entry entry = new Entry(id, book);
-        books.put(id, entry);
-        return entry;
+        return repository.insert(UUID.randomUUID(), book);
     }
 
-    public synchronized List<Entry> listBooks() {
-        return List.copyOf(books.values());
+    public List<Entry> listBooks() {
+        return repository.findAll();
     }
 
-    public synchronized Optional<Entry> update(UUID id, String title, String author, String genre, int pages) {
-        if (!books.containsKey(id)) {
-            return Optional.empty();
-        }
+    public Optional<Entry> update(UUID id, String title, String author, String genre, int pages) {
         Book replacement = new Book(title, author, genre, pages);
-        Entry entry = new Entry(id, replacement);
-        books.put(id, entry);
-        return Optional.of(entry);
+        return repository.update(id, replacement);
     }
 
-    public synchronized Optional<Entry> findById(UUID id) {
-        return Optional.ofNullable(books.get(id));
+    public Optional<Entry> findById(UUID id) {
+        return repository.findById(id);
     }
 }

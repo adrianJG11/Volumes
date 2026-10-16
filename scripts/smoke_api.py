@@ -82,6 +82,26 @@ def check_api(base_url):
     request("GET", "/books/00000000-0000-0000-0000-000000000000", 404)
     request("GET", "/books/not-a-uuid", 400)
     print("PASS: packaged Volumes API creates, lists, retrieves, updates, and rejects invalid input")
+    library_path = "/me/library/" + updated["id"]
+    assert request("GET", "/me/library", 200)[0] == []
+    assert request("POST", "/me/library", 201, {"bookId": updated["id"]})[0]["status"] == "PENDING"
+    request("POST", "/me/library", 409, {"bookId": updated["id"]})
+    request("PATCH", library_path, 200, {"status": "READING"})
+    bob = ApiSession(base_url)
+    bob.refresh_csrf()
+    bob_account = {"email": "bob@example.com", "password": "another smoke test passphrase"}
+    bob.request("POST", "/auth/register", 201, bob_account)
+    bob.login(bob_account)
+    assert bob.request("GET", "/me/library", 200)[0] == []
+    bob.request("PATCH", library_path, 404, {"status": "FINISHED"})
+    bob.request("DELETE", library_path, 404)
+    bob.request("POST", "/me/library", 201, {"bookId": updated["id"]})
+    bob.request("PATCH", library_path, 200, {"status": "FINISHED"})
+    assert request("GET", "/me/library", 200)[0][0]["status"] == "READING"
+    bob.request("DELETE", library_path, 204)
+    assert request("GET", "/books", 200)[0] == [updated]
+    assert len(request("GET", "/me/library", 200)[0]) == 1
+    print("PASS: personal library statuses, duplicates, removal, and two-user isolation")
     request("POST", "/auth/logout", 204)
     request("GET", "/auth/me", 401)
     print("PASS: login, current user, authenticated mutations, and logout")
@@ -164,6 +184,9 @@ def assert_persisted(base_url, expected):
     client = ApiSession(base_url)
     client.login({"email": "reader@example.com", "password": "a local smoke test passphrase"})
     assert client.request("GET", "/auth/me", 200)[0]["email"] == "reader@example.com"
+    library = client.request("GET", "/me/library", 200)[0]
+    assert library == [dict(bookId=expected["id"], status="READING",
+                            **{key: value for key, value in expected.items() if key != "id"})]
 
 
 def main():
@@ -181,11 +204,11 @@ def main():
                 error.close()
             else:
                 raise AssertionError("An old session remained authenticated after API restart")
-            print("PASS: accounts and books survive API restart; old sessions do not")
+            print("PASS: accounts, books, and personal libraries survive API restart; old sessions do not")
         environment = recreate_database()
         with running_api(environment) as base_url:
             assert_persisted(base_url, expected)
-            print("PASS: accounts and books survive database container recreation")
+            print("PASS: accounts, books, and personal libraries survive database container recreation")
 
 
 if __name__ == "__main__":

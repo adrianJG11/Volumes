@@ -78,6 +78,47 @@ class PersonalLibraryTest {
     }
 
     @Test
+    void responsesIncludeOptionalOwnerRatingAndStatusChangesPreserveIt() throws Exception {
+        var aliceAccount = registration.register("alice@example.com", PASSWORD);
+        var book = catalog.create("The Brothers Karamazov", "Fyodor Dostoevsky", "Fiction", 800);
+        String path = "/me/library/" + book.id();
+        try (var alice = new ApiClient(port); var bob = reader("bob@example.com")) {
+            assertEquals(204, alice.login("alice@example.com", PASSWORD).statusCode());
+            var added = alice.request("POST", "/me/library", body(book.id()));
+            assertEquals(201, added.statusCode());
+            var addedJson = json.readTree(added.body());
+            assertTrue(addedJson.has("rating"));
+            assertTrue(addedJson.get("rating").isNull());
+            var listedJson = json.readTree(alice.request("GET", "/me/library", null).body()).get(0);
+            assertTrue(listedJson.has("rating"));
+            assertTrue(listedJson.get("rating").isNull());
+            assertEquals(201, bob.request("POST", "/me/library", body(book.id())).statusCode());
+
+            // Seed a stored rating until the rating-write endpoint is implemented.
+            jdbc.sql("""
+                UPDATE library_entries SET rating = 5
+                WHERE user_id = :userId AND book_id = :bookId
+                """).param("userId", aliceAccount.id()).param("bookId", book.id()).update();
+            assertEquals(5, entries(alice)[0].rating());
+            assertNull(entries(bob)[0].rating());
+            var updated = alice.request("PATCH", path, "{\"status\":\"FINISHED\"}");
+            assertEquals(200, updated.statusCode());
+            var entry = json.readValue(updated.body(), LibraryEntry.class);
+            assertEquals(ReadingStatus.FINISHED, entry.status());
+            assertEquals(5, entry.rating());
+            assertEquals(5, entries(alice)[0].rating());
+            assertNull(entries(bob)[0].rating());
+
+            assertEquals(204, alice.request("DELETE", path, null).statusCode());
+            var readded = alice.request("POST", "/me/library", body(book.id()));
+            assertEquals(201, readded.statusCode());
+            var fresh = json.readValue(readded.body(), LibraryEntry.class);
+            assertEquals(ReadingStatus.PENDING, fresh.status());
+            assertNull(fresh.rating());
+        }
+    }
+
+    @Test
     void validatesRequestsAndIgnoresClientSuppliedOwner() throws Exception {
         var victim = registration.register("victim@example.com", PASSWORD);
         var book = catalog.create("Title", "Author", "Genre", 100);

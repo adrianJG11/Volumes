@@ -50,6 +50,19 @@ public class PersonalLibraryRepository {
             .query(ENTRY).optional();
     }
 
+    public Optional<LibraryEntry> updateRating(UUID userId, UUID bookId, int rating) {
+        return jdbc.sql("""
+            WITH updated AS (
+                UPDATE library_entries SET rating = :rating
+                WHERE user_id = :userId AND book_id = :bookId
+                RETURNING book_id, status, rating
+            )
+            SELECT u.book_id, b.title, b.author, b.genre, b.pages, u.status, u.rating
+            FROM updated u JOIN books b ON b.id = u.book_id
+            """).param("userId", userId).param("bookId", bookId).param("rating", rating)
+            .query(ENTRY).optional();
+    }
+
     public boolean remove(UUID userId, UUID bookId) {
         return jdbc.sql("DELETE FROM library_entries WHERE user_id = :userId AND book_id = :bookId")
             .param("userId", userId).param("bookId", bookId).update() == 1;

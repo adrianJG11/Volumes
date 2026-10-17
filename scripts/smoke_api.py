@@ -86,7 +86,9 @@ def check_api(base_url):
     assert request("GET", "/me/library", 200)[0] == []
     assert request("POST", "/me/library", 201, {"bookId": updated["id"]})[0]["status"] == "PENDING"
     request("POST", "/me/library", 409, {"bookId": updated["id"]})
-    request("PATCH", library_path, 200, {"status": "READING"})
+    assert request("PUT", library_path + "/rating", 200, {"rating": 5})[0]["rating"] == 5
+    request("PUT", library_path + "/rating", 400, {"rating": 6})
+    assert request("PATCH", library_path, 200, {"status": "READING"})[0]["rating"] == 5
     bob = ApiSession(base_url)
     bob.refresh_csrf()
     bob_account = {"email": "bob@example.com", "password": "another smoke test passphrase"}
@@ -95,13 +97,16 @@ def check_api(base_url):
     assert bob.request("GET", "/me/library", 200)[0] == []
     bob.request("PATCH", library_path, 404, {"status": "FINISHED"})
     bob.request("DELETE", library_path, 404)
+    bob.request("PUT", library_path + "/rating", 404, {"rating": 1})
     bob.request("POST", "/me/library", 201, {"bookId": updated["id"]})
     bob.request("PATCH", library_path, 200, {"status": "FINISHED"})
+    bob.request("PUT", library_path + "/rating", 200, {"rating": 1})
+    assert request("GET", "/me/library", 200)[0][0]["rating"] == 5
     assert request("GET", "/me/library", 200)[0][0]["status"] == "READING"
     bob.request("DELETE", library_path, 204)
     assert request("GET", "/books", 200)[0] == [updated]
     assert len(request("GET", "/me/library", 200)[0]) == 1
-    print("PASS: personal library statuses, duplicates, removal, and two-user isolation")
+    print("PASS: personal library statuses, ratings, duplicates, removal, and two-user isolation")
     request("POST", "/auth/logout", 204)
     request("GET", "/auth/me", 401)
     print("PASS: login, current user, authenticated mutations, and logout")
@@ -185,7 +190,7 @@ def assert_persisted(base_url, expected):
     client.login({"email": "reader@example.com", "password": "a local smoke test passphrase"})
     assert client.request("GET", "/auth/me", 200)[0]["email"] == "reader@example.com"
     library = client.request("GET", "/me/library", 200)[0]
-    assert library == [dict(bookId=expected["id"], status="READING", rating=None,
+    assert library == [dict(bookId=expected["id"], status="READING", rating=5,
                             **{key: value for key, value in expected.items() if key != "id"})]
 
 

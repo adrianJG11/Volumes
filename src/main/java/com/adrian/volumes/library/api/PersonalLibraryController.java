@@ -6,6 +6,8 @@ import com.adrian.volumes.library.PersonalLibraryRepository;
 import com.adrian.volumes.library.ReadingStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,6 +29,7 @@ public class PersonalLibraryController {
 
     public record AddRequest(@NotNull UUID bookId) {}
     public record StatusRequest(@NotNull ReadingStatus status) {}
+    public record RatingRequest(@NotNull @Min(1) @Max(5) Integer rating) {}
 
     private UUID owner(Authentication authentication) {
         return UUID.fromString(authentication.getName());
@@ -51,6 +54,13 @@ public class PersonalLibraryController {
     public LibraryEntry update(Authentication authentication, @PathVariable("bookId") UUID bookId,
                                @Valid @RequestBody StatusRequest request) {
         return library.updateStatus(owner(authentication), bookId, request.status())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Library entry not found."));
+    }
+
+    @PutMapping("/{bookId}/rating")
+    public LibraryEntry rate(Authentication authentication, @PathVariable("bookId") UUID bookId,
+                             @Valid @RequestBody RatingRequest request) {
+        return library.updateRating(owner(authentication), bookId, request.rating())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Library entry not found."));
     }
 

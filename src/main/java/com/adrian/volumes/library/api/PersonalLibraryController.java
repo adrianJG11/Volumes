@@ -48,7 +48,7 @@ public class PersonalLibraryController {
     }
 
     @PatchMapping("/{bookId}")
-    public LibraryEntry update(Authentication authentication, @PathVariable UUID bookId,
+    public LibraryEntry update(Authentication authentication, @PathVariable("bookId") UUID bookId,
                                @Valid @RequestBody StatusRequest request) {
         return library.updateStatus(owner(authentication), bookId, request.status())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Library entry not found."));
@@ -56,7 +56,7 @@ public class PersonalLibraryController {
 
     @DeleteMapping("/{bookId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void remove(Authentication authentication, @PathVariable UUID bookId) {
+    public void remove(Authentication authentication, @PathVariable("bookId") UUID bookId) {
         if (!library.remove(owner(authentication), bookId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Library entry not found.");
         }

@@ -38,14 +38,14 @@ public class BookController {
     }
 
     @PutMapping("/{id}")
-    public BookResponse updateBook(@PathVariable UUID id, @Valid @RequestBody BookRequest request) {
+    public BookResponse updateBook(@PathVariable("id") UUID id, @Valid @RequestBody BookRequest request) {
         return catalog.update(id, request.title(), request.author(), request.genre(), request.pages())
             .map(BookResponse::from)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found."));
     }
 
     @GetMapping("/{id}")
-    public BookResponse getBook(@PathVariable UUID id) {
+    public BookResponse getBook(@PathVariable("id") UUID id) {
         return catalog.findById(id).map(BookResponse::from)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found."));
     }

@@ -157,9 +157,21 @@ Each user has a private list of shared-catalog books. All endpoints below requir
 | POST | /me/library | `{"bookId":"UUID"}` | 201 entry, initially PENDING |
 | GET | /me/library | None | 200 array in addition order |
 | PATCH | /me/library/{bookId} | `{"status":"READING"}` | 200 updated entry |
+| PUT | /me/library/{bookId}/rating | `{"rating":5}` | 200 updated entry |
+| DELETE | /me/library/{bookId}/rating | None | 204 |
 | DELETE | /me/library/{bookId} | None | 204 |
 
-Entries return `bookId`, `title`, `author`, `genre`, `pages`, and `status`. Status must be PENDING, READING, or FINISHED; numeric values and unknown names return 400. Updates preserve addition order. Missing books on add return 404; duplicate entries return 409. Updating or removing an entry absent from your own library returns 404, even if another reader has that book.
+Entries return `bookId`, `title`, `author`, `genre`, `pages`, `status`, and nullable `rating`. An unrated entry returns `"rating": null`; stored ratings range from 1 to 5. PUT sets or replaces your rating, independently of reading status. Missing, null, fractional, nonnumeric, and out-of-range ratings return 400. An entry absent from your library returns 404; rating a book never adds it to your library. Repeating the same rating leaves the same state. DELETE on `/rating` clears only your rating and keeps the entry, its status, and its position; clearing an already unrated entry also returns 204. Absent ratings are `null`, never `0`. Status must be PENDING, READING, or FINISHED; numeric values and unknown names return 400. Updates preserve addition order. Missing books on add return 404; duplicate entries return 409. Updating or removing an entry absent from your own library returns 404, even if another reader has that book.
+
+Rate and then clear a book in your library, using the cookie file and a fresh CSRF token from the authentication section:
+
+```bash
+curl -i -X PUT http://localhost:8080/me/library/BOOK_ID/rating \
+  -b /tmp/volumes-cookies.txt -H "X-CSRF-TOKEN: $CSRF" \
+  -H 'Content-Type: application/json' -d '{"rating":4}'
+curl -i -X DELETE http://localhost:8080/me/library/BOOK_ID/rating \
+  -b /tmp/volumes-cookies.txt -H "X-CSRF-TOKEN: $CSRF"
+```
 
 `V3__create_library_entries.sql` adds foreign keys to users and books, a composite primary key `(user_id, book_id)`, an allowed-status constraint, and a generated ordering key. Each SQL mutation is atomic. The repository scopes reads, updates, and deletes by user ID. Removing an entry never removes the shared book. Book details are joined from the catalog, so metadata edits are reflected for every reader while reading statuses remain independent.
 

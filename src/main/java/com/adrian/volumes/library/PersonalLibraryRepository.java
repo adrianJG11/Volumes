@@ -67,4 +67,9 @@ public class PersonalLibraryRepository {
         return jdbc.sql("DELETE FROM library_entries WHERE user_id = :userId AND book_id = :bookId")
             .param("userId", userId).param("bookId", bookId).update() == 1;
     }
+
+    public boolean clearRating(UUID userId, UUID bookId) {
+        return jdbc.sql("UPDATE library_entries SET rating = NULL WHERE user_id = :userId AND book_id = :bookId")
+            .param("userId", userId).param("bookId", bookId).update() == 1;
+    }
 }

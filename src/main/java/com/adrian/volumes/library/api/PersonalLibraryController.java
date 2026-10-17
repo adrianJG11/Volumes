@@ -64,6 +64,14 @@ public class PersonalLibraryController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Library entry not found."));
     }
 
+    @DeleteMapping("/{bookId}/rating")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearRating(Authentication authentication, @PathVariable("bookId") UUID bookId) {
+        if (!library.clearRating(owner(authentication), bookId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Library entry not found.");
+        }
+    }
+
     @DeleteMapping("/{bookId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(Authentication authentication, @PathVariable("bookId") UUID bookId) {

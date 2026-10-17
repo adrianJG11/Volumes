@@ -101,12 +101,15 @@ def check_api(base_url):
     bob.request("POST", "/me/library", 201, {"bookId": updated["id"]})
     bob.request("PATCH", library_path, 200, {"status": "FINISHED"})
     bob.request("PUT", library_path + "/rating", 200, {"rating": 1})
+    bob.request("DELETE", library_path + "/rating", 204)
+    bob.request("DELETE", library_path + "/rating", 204)
+    assert bob.request("GET", "/me/library", 200)[0][0]["rating"] is None
     assert request("GET", "/me/library", 200)[0][0]["rating"] == 5
     assert request("GET", "/me/library", 200)[0][0]["status"] == "READING"
     bob.request("DELETE", library_path, 204)
     assert request("GET", "/books", 200)[0] == [updated]
     assert len(request("GET", "/me/library", 200)[0]) == 1
-    print("PASS: personal library statuses, ratings, duplicates, removal, and two-user isolation")
+    print("PASS: personal library statuses, ratings, clearing, duplicates, removal, and two-user isolation")
     request("POST", "/auth/logout", 204)
     request("GET", "/auth/me", 401)
     print("PASS: login, current user, authenticated mutations, and logout")

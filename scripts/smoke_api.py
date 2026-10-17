@@ -185,7 +185,7 @@ def assert_persisted(base_url, expected):
     client.login({"email": "reader@example.com", "password": "a local smoke test passphrase"})
     assert client.request("GET", "/auth/me", 200)[0]["email"] == "reader@example.com"
     library = client.request("GET", "/me/library", 200)[0]
-    assert library == [dict(bookId=expected["id"], status="READING",
+    assert library == [dict(bookId=expected["id"], status="READING", rating=None,
                             **{key: value for key, value in expected.items() if key != "id"})]
 
 

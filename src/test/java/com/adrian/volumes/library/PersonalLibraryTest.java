@@ -40,6 +40,14 @@ class PersonalLibraryTest {
 
     private String body(UUID id) { return "{\"bookId\":\"" + id + "\"}"; }
 
+    private String rating(Object value) { return "{\"rating\":" + value + "}"; }
+
+    private LibraryEntry rate(ApiClient client, UUID bookId, int value) throws Exception {
+        var response = client.request("PUT", "/me/library/" + bookId + "/rating", rating(value));
+        assertEquals(200, response.statusCode());
+        return json.readValue(response.body(), LibraryEntry.class);
+    }
+
     private LibraryEntry[] entries(ApiClient client) throws Exception {
         var response = client.request("GET", "/me/library", null);
         assertEquals(200, response.statusCode());
@@ -100,6 +108,75 @@ class PersonalLibraryTest {
     }
 
     @Test
+    void ratingsAreOwnerScopedIndependentAndPreserveStatusAndOrder() throws Exception {
+        var first = catalog.create("Crime and Punishment", "Fyodor Dostoevsky", "Fiction", 550);
+        var second = catalog.create("The Idiot", "Fyodor Dostoevsky", "Fiction", 650);
+        String path = "/me/library/" + first.id() + "/rating";
+        try (var alice = reader("alice@example.com"); var bob = reader("bob@example.com")) {
+            assertEquals(201, alice.request("POST", "/me/library", body(first.id())).statusCode());
+            assertEquals(201, alice.request("POST", "/me/library", body(second.id())).statusCode());
+            assertNull(entries(alice)[0].rating());
+            assertEquals(200, alice.request("PATCH", "/me/library/" + first.id(), "{\"status\":\"READING\"}").statusCode());
+
+            var rated = rate(alice, first.id(), 1);
+            assertEquals(1, rated.rating());
+            assertEquals(ReadingStatus.READING, rated.status());
+            assertEquals("Crime and Punishment", rated.title());
+            assertEquals(5, rate(alice, first.id(), 5).rating());
+            assertEquals(5, rate(alice, first.id(), 5).rating());
+
+            assertEquals(404, bob.request("PUT", path, rating(3)).statusCode());
+            assertEquals(404, bob.request("DELETE", path, null).statusCode());
+            assertEquals(0, entries(bob).length);
+            assertEquals(201, bob.request("POST", "/me/library", body(first.id())).statusCode());
+            assertEquals(2, rate(bob, first.id(), 2).rating());
+
+            var finished = alice.request("PATCH", "/me/library/" + first.id(), "{\"status\":\"FINISHED\"}");
+            assertEquals(5, json.readValue(finished.body(), LibraryEntry.class).rating());
+            var a = entries(alice);
+            assertEquals(first.id(), a[0].bookId());
+            assertEquals(second.id(), a[1].bookId());
+            assertEquals(ReadingStatus.FINISHED, a[0].status());
+            assertEquals(5, a[0].rating());
+            assertNull(a[1].rating());
+
+            assertEquals(204, alice.request("DELETE", path, null).statusCode());
+            assertNull(entries(alice)[0].rating());
+            assertEquals(ReadingStatus.FINISHED, entries(alice)[0].status());
+            assertEquals(204, alice.request("DELETE", path, null).statusCode());
+            assertEquals(2, entries(bob)[0].rating());
+
+            assertEquals(3, rate(alice, first.id(), 3).rating());
+            assertEquals(204, alice.request("DELETE", "/me/library/" + first.id(), null).statusCode());
+            assertEquals(404, alice.request("PUT", path, rating(4)).statusCode());
+            assertEquals(1, entries(alice).length);
+            assertEquals(201, alice.request("POST", "/me/library", body(first.id())).statusCode());
+            var readded = entries(alice)[1];
+            assertNull(readded.rating());
+            assertEquals(ReadingStatus.PENDING, readded.status());
+            assertEquals(2, entries(bob)[0].rating());
+        }
+    }
+
+    @Test
+    void invalidRatingsAreRejectedWithoutChangingData() throws Exception {
+        var book = catalog.create("Title", "Author", "Genre", 100);
+        String path = "/me/library/" + book.id() + "/rating";
+        try (var client = reader("reader@example.com")) {
+            assertEquals(201, client.request("POST", "/me/library", body(book.id())).statusCode());
+            rate(client, book.id(), 3);
+            for (String invalid : new String[] {"{}", "null", "{", rating(null), rating(0), rating(6), rating(-1),
+                    rating(3.5), rating(4.0), rating("\"five\""), rating(true), rating("[3]")}) {
+                assertEquals(400, client.request("PUT", path, invalid).statusCode(), invalid);
+                assertEquals(3, entries(client)[0].rating());
+            }
+            assertEquals(400, client.request("PUT", "/me/library/not-a-uuid/rating", rating(3)).statusCode());
+            assertEquals(400, client.request("DELETE", "/me/library/not-a-uuid/rating", null).statusCode());
+            assertEquals(404, client.request("PUT", "/me/library/" + UUID.randomUUID() + "/rating", rating(3)).statusCode());
+        }
+    }
+
+    @Test
     void unauthenticatedAndMissingCsrfRequestsCannotChangeEntries() throws Exception {
         var book = catalog.create("Title", "Author", "Genre", 100);
         try (var anonymous = new ApiClient(port)) {
@@ -107,10 +184,18 @@ class PersonalLibraryTest {
             assertEquals(401, anonymous.request("POST", "/me/library", body(book.id())).statusCode());
             assertEquals(401, anonymous.request("PATCH", "/me/library/" + book.id(), "{\"status\":\"READING\"}").statusCode());
             assertEquals(401, anonymous.request("DELETE", "/me/library/" + book.id(), null).statusCode());
+            assertEquals(401, anonymous.request("PUT", "/me/library/" + book.id() + "/rating", rating(4)).statusCode());
+            assertEquals(401, anonymous.request("DELETE", "/me/library/" + book.id() + "/rating", null).statusCode());
         }
         try (var client = reader("reader@example.com")) {
             assertEquals(403, client.send("POST", "/me/library", body(book.id()), "application/json", null).statusCode());
             assertEquals(0, entries(client).length);
+            assertEquals(201, client.request("POST", "/me/library", body(book.id())).statusCode());
+            rate(client, book.id(), 4);
+            String path = "/me/library/" + book.id() + "/rating";
+            assertEquals(403, client.send("PUT", path, rating(1), "application/json", null).statusCode());
+            assertEquals(403, client.send("DELETE", path, null, null, null).statusCode());
+            assertEquals(4, entries(client)[0].rating());
         }
     }
 
@@ -127,6 +212,9 @@ class PersonalLibraryTest {
         assertThrows(DataIntegrityViolationException.class, () -> library.add(user.id(), UUID.randomUUID()));
         assertThrows(DataIntegrityViolationException.class, () -> library.add(UUID.randomUUID(), book.id()));
         assertThrows(DataIntegrityViolationException.class, () -> jdbc.sql("UPDATE library_entries SET status = 'WRONG'").update());
+        assertThrows(DataIntegrityViolationException.class, () -> library.updateRating(user.id(), book.id(), 0));
+        assertThrows(DataIntegrityViolationException.class, () -> library.updateRating(user.id(), book.id(), 6));
         assertEquals(ReadingStatus.PENDING, library.list(user.id()).getFirst().status());
+        assertNull(library.list(user.id()).getFirst().rating());
     }
 }

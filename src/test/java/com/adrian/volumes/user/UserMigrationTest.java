@@ -48,7 +48,7 @@ class UserMigrationTest {
             }
             assertEquals(0, flyway.migrate().migrationsExecuted);
             assertEquals(1L, jdbc.sql("SELECT count(*) FROM users").query(Long.class).single());
-            assertEquals(1, Flyway.configure().dataSource(source).load().migrate().migrationsExecuted);
+            assertEquals(1, Flyway.configure().dataSource(source).target("3").load().migrate().migrationsExecuted);
             assertEquals(0L, jdbc.sql("SELECT count(*) FROM library_entries").query(Long.class).single());
             assertEquals(userId, jdbc.sql("SELECT id FROM users").query(UUID.class).single());
             assertEquals(bookId, jdbc.sql("SELECT id FROM books").query(UUID.class).single());

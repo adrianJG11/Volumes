@@ -158,9 +158,35 @@ Each user has a private list of shared-catalog books. All endpoints below requir
 | GET | /me/library | None | 200 array in addition order |
 | PATCH | /me/library/{bookId} | `{"status":"READING"}` | 200 updated entry |
 | DELETE | /me/library/{bookId} | None | 204 |
+| PUT | /me/library/{bookId}/rating | `{"rating":4}` | 200 updated entry |
+| DELETE | /me/library/{bookId}/rating | None | 204, rating cleared |
 
-Entries return `bookId`, `title`, `author`, `genre`, `pages`, and `status`. Status must be PENDING, READING, or FINISHED; numeric values and unknown names return 400. Updates preserve addition order. Missing books on add return 404; duplicate entries return 409. Updating or removing an entry absent from your own library returns 404, even if another reader has that book.
+Entries return `bookId`, `title`, `author`, `genre`, `pages`, `status`, and `rating`. Status must be PENDING, READING, or FINISHED; numeric values and unknown names return 400. Updates preserve addition order. Missing books on add return 404; duplicate entries return 409. Updating or removing an entry absent from your own library returns 404, even if another reader has that book.
 
 `V3__create_library_entries.sql` adds foreign keys to users and books, a composite primary key `(user_id, book_id)`, an allowed-status constraint, and a generated ordering key. Each SQL mutation is atomic. The repository scopes reads, updates, and deletes by user ID. Removing an entry never removes the shared book. Book details are joined from the catalog, so metadata edits are reflected for every reader while reading statuses remain independent.
 
-The packaged smoke check uses two accounts and verifies that accounts, books, and personal entries survive API restart and database container recreation. Tests also cover attempted cross-user changes, malformed input, CSRF, and simultaneous duplicate additions.
+### Ratings
+
+Each reader can rate books in their own library from 1 to 5. `rating` is `null` until the book is rated; zero is never used to mean "not rated". Ratings are private to each reader and independent of reading status, so a book can be rated while still PENDING or READING.
+
+```http
+PUT /me/library/{bookId}/rating
+X-CSRF-TOKEN: <token>
+Content-Type: application/json
+
+{"rating": 4}
+```
+
+```json
+{"bookId":"...","title":"The Idiot","author":"Fyodor Dostoevsky","genre":"Fiction","pages":600,"status":"READING","rating":4}
+```
+
+- PUT sets or replaces the rating; repeating it leaves the same value.
+- DELETE clears only the rating and returns 204, also when the entry had no rating.
+- Missing, null, fractional (`3.5`, `4.0`), non-numeric, and out-of-range values return 400 and leave the stored rating unchanged.
+- Rating a book absent from your own library returns 404 and does not add it. Removing and re-adding an entry starts again with no rating and PENDING status.
+- Status updates keep the rating, and rating changes keep the status and addition order.
+
+`V4__add_library_ratings.sql` adds a nullable `rating` column with a `CHECK (rating BETWEEN 1 AND 5)` constraint, so even direct SQL cannot store 0 or 6. Existing entries start with `null`. Rating updates use the same `WHERE user_id = :userId AND book_id = :bookId` filter as status updates, so one reader's request can never change another reader's row.
+
+The packaged smoke check uses two accounts and verifies that accounts, books, and personal entries survive API restart and database container recreation. Tests also cover attempted cross-user changes, malformed input, CSRF, simultaneous duplicate additions, rating boundaries and isolation, and the V3 to V4 upgrade.

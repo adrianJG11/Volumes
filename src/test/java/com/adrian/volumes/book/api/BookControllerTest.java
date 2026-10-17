@@ -1,17 +1,18 @@
 package com.adrian.volumes.book.api;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.adrian.volumes.support.ApiClient;
+import com.adrian.volumes.user.UserRegistration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,18 +29,23 @@ class BookControllerTest {
         {"title":"  Crime and Punishment  ","author":"Fyodor Dostoevsky","genre":"Fiction","pages":350}
         """;
 
+    private ApiClient client;
+
+    @Autowired
+    private UserRegistration registration;
+
+    @BeforeEach
+    void signIn() throws Exception {
+        registration.register("catalog@example.com", "catalog test passphrase");
+        client = new ApiClient(port);
+        assertEquals(204, client.login("catalog@example.com", "catalog test passphrase").statusCode());
+    }
+
+    @AfterEach
+    void closeClient() { if (client != null) client.close(); }
+
     private HttpResponse<String> request(String method, String path, String body) throws Exception {
-        try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()) {
-            var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-                .timeout(Duration.ofSeconds(5)).header("Accept", "application/json, application/problem+json");
-            if (body == null) {
-                builder.method(method, HttpRequest.BodyPublishers.noBody());
-            } else {
-                builder.header("Content-Type", "application/json")
-                    .method(method, HttpRequest.BodyPublishers.ofString(body));
-            }
-            return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        }
+        return client.request(method, path, body);
     }
 
     @Test

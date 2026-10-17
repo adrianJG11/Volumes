@@ -10,6 +10,8 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
+import http.cookiejar
 import uuid
 
 
@@ -17,21 +19,50 @@ ROOT = Path(__file__).resolve().parents[1]
 JAR = ROOT / "target/volumes-0.1.0-SNAPSHOT.jar"
 
 
-def check_api(base_url):
-    def request(method, path, expected_status, body=None):
-        data = None if body is None else json.dumps(body).encode()
-        req = urllib.request.Request(base_url + path, data=data, method=method,
-                                     headers={"Content-Type": "application/json"})
+class ApiSession:
+    def __init__(self, base_url):
+        self.base_url = base_url
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+        self.csrf = None
+
+    def refresh_csrf(self):
+        self.csrf = self.request("GET", "/auth/csrf", 200)[0]["token"]
+
+    def login(self, account):
+        self.refresh_csrf()
+        self.request("POST", "/auth/login", 204, account)
+        self.refresh_csrf()
+
+    def request(self, method, path, expected_status, body=None):
+        is_login = path == "/auth/login"
+        data = None if body is None else (urllib.parse.urlencode(body).encode() if is_login else json.dumps(body).encode())
+        headers = {"Content-Type": "application/x-www-form-urlencoded" if is_login else "application/json"}
+        if self.csrf is not None and method != "GET":
+            headers["X-CSRF-TOKEN"] = self.csrf
+        req = urllib.request.Request(self.base_url + path, data=data, method=method, headers=headers)
         try:
-            response = urllib.request.urlopen(req, timeout=5)
+            response = self.opener.open(req, timeout=10)
         except urllib.error.HTTPError as error:
             response = error
         with response:
             payload = response.read().decode()
             if response.status != expected_status:
                 raise AssertionError(f"{method} {path}: {response.status}: {payload}")
-            return json.loads(payload), response.headers
+            return (json.loads(payload) if payload else None), response.headers
 
+
+def check_api(base_url):
+    client = ApiSession(base_url)
+    request = client.request
+    client.refresh_csrf()
+    account = {"email": " Reader@Example.com ", "password": "a local smoke test passphrase"}
+    registered, _ = request("POST", "/auth/register", 201, account)
+    assert set(registered) == {"id", "email"}
+    assert registered["email"] == "reader@example.com"
+    request("POST", "/auth/register", 409, account)
+    print("PASS: registration returns account identity and rejects duplicate email")
+    client.login(account)
+    assert request("GET", "/auth/me", 200)[0] == registered
     assert request("GET", "/books", 200)[0] == []
     original = {"title": "  Crime and Punishment  ", "author": "Fyodor Dostoevsky",
                 "genre": "Fiction", "pages": 350}
@@ -51,7 +82,31 @@ def check_api(base_url):
     request("GET", "/books/00000000-0000-0000-0000-000000000000", 404)
     request("GET", "/books/not-a-uuid", 400)
     print("PASS: packaged Volumes API creates, lists, retrieves, updates, and rejects invalid input")
-    return updated
+    library_path = "/me/library/" + updated["id"]
+    assert request("GET", "/me/library", 200)[0] == []
+    assert request("POST", "/me/library", 201, {"bookId": updated["id"]})[0]["status"] == "PENDING"
+    request("POST", "/me/library", 409, {"bookId": updated["id"]})
+    request("PATCH", library_path, 200, {"status": "READING"})
+    bob = ApiSession(base_url)
+    bob.refresh_csrf()
+    bob_account = {"email": "bob@example.com", "password": "another smoke test passphrase"}
+    bob.request("POST", "/auth/register", 201, bob_account)
+    bob.login(bob_account)
+    assert bob.request("GET", "/me/library", 200)[0] == []
+    bob.request("PATCH", library_path, 404, {"status": "FINISHED"})
+    bob.request("DELETE", library_path, 404)
+    bob.request("POST", "/me/library", 201, {"bookId": updated["id"]})
+    bob.request("PATCH", library_path, 200, {"status": "FINISHED"})
+    assert request("GET", "/me/library", 200)[0][0]["status"] == "READING"
+    bob.request("DELETE", library_path, 204)
+    assert request("GET", "/books", 200)[0] == [updated]
+    assert len(request("GET", "/me/library", 200)[0]) == 1
+    print("PASS: personal library statuses, duplicates, removal, and two-user isolation")
+    request("POST", "/auth/logout", 204)
+    request("GET", "/auth/me", 401)
+    print("PASS: login, current user, authenticated mutations, and logout")
+    client.login(account)
+    return updated, client.opener
 
 
 @contextmanager
@@ -126,6 +181,12 @@ def assert_persisted(base_url, expected):
         assert json.load(response) == expected
     with urllib.request.urlopen(base_url + "/books", timeout=5) as response:
         assert json.load(response) == [expected]
+    client = ApiSession(base_url)
+    client.login({"email": "reader@example.com", "password": "a local smoke test passphrase"})
+    assert client.request("GET", "/auth/me", 200)[0]["email"] == "reader@example.com"
+    library = client.request("GET", "/me/library", 200)[0]
+    assert library == [dict(bookId=expected["id"], status="READING",
+                            **{key: value for key, value in expected.items() if key != "id"})]
 
 
 def main():
@@ -133,14 +194,21 @@ def main():
         raise SystemExit("Run mvn verify first to build the executable JAR.")
     with temporary_database() as (environment, recreate_database):
         with running_api(environment) as base_url:
-            expected = check_api(base_url)
+            expected, previous_session = check_api(base_url)
         with running_api(environment) as base_url:
             assert_persisted(base_url, expected)
-            print("PASS: book identity and updated fields survive an API restart")
+            try:
+                previous_session.open(base_url + "/auth/me", timeout=5)
+            except urllib.error.HTTPError as error:
+                assert error.code == 401
+                error.close()
+            else:
+                raise AssertionError("An old session remained authenticated after API restart")
+            print("PASS: accounts, books, and personal libraries survive API restart; old sessions do not")
         environment = recreate_database()
         with running_api(environment) as base_url:
             assert_persisted(base_url, expected)
-            print("PASS: books survive database container recreation with the named volume retained")
+            print("PASS: accounts, books, and personal libraries survive database container recreation")
 
 
 if __name__ == "__main__":

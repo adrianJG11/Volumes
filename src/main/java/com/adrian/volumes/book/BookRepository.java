@@ -13,7 +13,9 @@ public class BookRepository {
     private static final RowMapper<BookCatalog.Entry> BOOK_ROW = (row, rowNumber) ->
         new BookCatalog.Entry(row.getObject("id", UUID.class),
             new Book(row.getString("title"), row.getString("author"),
-                row.getString("genre"), row.getInt("pages")));
+                row.getString("genre"), row.getInt("pages")),
+            row.getString("isbn") == null ? null : new BookEdition(row.getString("isbn"),
+                row.getString("open_library_id"), row.getObject("cover_id", Long.class)));
 
     private final JdbcClient jdbc;
 
@@ -25,20 +27,20 @@ public class BookRepository {
         return bind(jdbc.sql("""
             INSERT INTO books (id, title, author, genre, pages)
             VALUES (:id, :title, :author, :genre, :pages)
-            RETURNING id, title, author, genre, pages
+            RETURNING id, title, author, genre, pages, isbn, open_library_id, cover_id
             """), id, book).query(BOOK_ROW).single();
     }
 
     public List<BookCatalog.Entry> findAll() {
         return List.copyOf(jdbc.sql("""
-            SELECT id, title, author, genre, pages
+            SELECT id, title, author, genre, pages, isbn, open_library_id, cover_id
             FROM books ORDER BY insertion_order
             """).query(BOOK_ROW).list());
     }
 
     public Optional<BookCatalog.Entry> findById(UUID id) {
         return jdbc.sql("""
-            SELECT id, title, author, genre, pages FROM books WHERE id = :id
+            SELECT id, title, author, genre, pages, isbn, open_library_id, cover_id FROM books WHERE id = :id
             """).param("id", id).query(BOOK_ROW).optional();
     }
 
@@ -47,8 +49,20 @@ public class BookRepository {
         return bind(jdbc.sql("""
             UPDATE books SET title = :title, author = :author, genre = :genre, pages = :pages
             WHERE id = :id
-            RETURNING id, title, author, genre, pages
+            RETURNING id, title, author, genre, pages, isbn, open_library_id, cover_id
             """), id, book).query(BOOK_ROW).optional();
+    }
+
+    public Optional<BookCatalog.Entry> setEdition(UUID id, BookEdition edition) {
+        return jdbc.sql("""
+            UPDATE books SET isbn = :isbn, open_library_id = :editionId, cover_id = :coverId
+            WHERE id = :id
+            RETURNING id, title, author, genre, pages, isbn, open_library_id, cover_id
+            """).param("id", id)
+            .param("isbn", edition == null ? null : edition.isbn(), java.sql.Types.VARCHAR)
+            .param("editionId", edition == null ? null : edition.openLibraryId(), java.sql.Types.VARCHAR)
+            .param("coverId", edition == null ? null : edition.coverId(), java.sql.Types.BIGINT)
+            .query(BOOK_ROW).optional();
     }
 
     private JdbcClient.StatementSpec bind(JdbcClient.StatementSpec statement, UUID id, Book book) {

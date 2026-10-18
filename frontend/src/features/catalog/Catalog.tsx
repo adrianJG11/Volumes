@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BookCover } from './BookCover'
 import { getBooks, type Book } from './api'
 
 type CatalogState =
@@ -29,9 +30,9 @@ export function Catalog() {
   }
 
   return (
-    <section aria-labelledby="catalog-title" className="mt-12 border-t border-border pt-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="catalog-title" className="text-2xl font-semibold">Catalog</h2>
+    <section aria-labelledby="catalog-title" className="mt-10 sm:mt-12">
+      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-4">
+        <h2 id="catalog-title" className="text-sm font-semibold">All books</h2>
         {state.status === 'success' && (
           <p className="text-sm text-muted tabular-nums">
             {state.books.length} {state.books.length === 1 ? 'book' : 'books'}
@@ -45,7 +46,7 @@ export function Catalog() {
         <div className="py-10">
           <p role="alert" className="text-lg font-medium">We couldn’t load the catalog.</p>
           <p className="mt-2 text-muted">Check your connection and try again.</p>
-          <button type="button" onClick={reload} className="mt-5 min-h-11 rounded-md bg-accent px-5 py-2 font-medium text-white hover:bg-accent/90">
+          <button type="button" onClick={reload} className="mt-5 min-h-11 border-b-2 border-accent py-2 font-semibold text-accent hover:border-foreground hover:text-foreground">
             Try again
           </button>
         </div>
@@ -54,22 +55,25 @@ export function Catalog() {
         <div className="py-10">
           <p role="status" className="text-lg font-medium">No books in the catalog yet.</p>
           <p className="mt-2 text-muted">Check again later for new books.</p>
-          <button type="button" onClick={reload} className="mt-5 min-h-11 rounded-md border border-border px-5 py-2 font-medium hover:bg-slate-50">
+          <button type="button" onClick={reload} className="mt-5 min-h-11 border-b-2 border-accent py-2 font-semibold text-accent hover:border-foreground hover:text-foreground">
             Refresh catalog
           </button>
         </div>
       ) : (
-        <ul className="mt-5 divide-y divide-border">
+        <ul className="divide-y divide-border">
           {state.books.map((book) => (
-            <li key={book.id} className="grid gap-3 py-6 sm:grid-cols-[1fr_auto] sm:gap-8">
-              <div className="min-w-0">
-                <h3 className="font-serif text-2xl leading-snug wrap-anywhere">{book.title}</h3>
-                <p className="mt-1 text-muted wrap-anywhere">{book.author}</p>
+            <li key={book.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 py-7 sm:gap-x-8 sm:py-8">
+              <BookCover />
+              <div className="flex min-w-0 flex-col justify-between gap-5 py-1 sm:flex-row sm:gap-8">
+                <div className="min-w-0">
+                  <h3 className="max-w-xl font-serif text-2xl leading-snug text-pretty wrap-anywhere sm:text-3xl">{book.title}</h3>
+                  <p className="mt-2 text-sm text-muted wrap-anywhere sm:text-base">{book.author}</p>
+                </div>
+                <dl className="flex shrink-0 flex-wrap gap-x-5 gap-y-2 text-sm text-muted sm:max-w-40 sm:flex-col sm:text-right">
+                  <div className="max-w-40 wrap-anywhere"><dt className="sr-only">Genre</dt><dd>{book.genre}</dd></div>
+                  <div><dt className="sr-only">Length</dt><dd className="tabular-nums">{book.pages} pages</dd></div>
+                </dl>
               </div>
-              <dl className="flex flex-wrap items-start gap-x-5 gap-y-1 text-sm text-muted sm:text-right">
-                <div className="max-w-64 wrap-anywhere"><dt className="sr-only">Genre</dt><dd>{book.genre}</dd></div>
-                <div><dt className="sr-only">Length</dt><dd className="tabular-nums">{book.pages} pages</dd></div>
-              </dl>
             </li>
           ))}
         </ul>

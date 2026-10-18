@@ -37,7 +37,7 @@ Use feature folders for auth and catalog when those features are introduced. The
 
 ## Visual direction
 
-White background, slate text, blue accent, and a serif reading headline. Color names in `@theme` generate utilities such as `text-accent`; components should reuse those tokens. Keep motion minimal and preserve keyboard focus, readable contrast, and narrow-screen layouts.
+Open editorial rows, a large serif masthead, white background, slate text, and a burgundy accent. No rounded cards. Each book reserves a 2:3 cover slot with an explicit missing-cover placeholder; actual cover URLs and images are a later API feature. Color names in `@theme` generate utilities such as `text-accent`; components should reuse those tokens. Keep motion minimal and preserve keyboard focus, readable contrast, and narrow-screen layouts.
 
 Browser inspection uses the WSL Playwright tool environment. Catalog browser checks are described below.
 

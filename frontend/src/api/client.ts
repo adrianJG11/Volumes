@@ -7,21 +7,21 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path: string, options: RequestInit = {}): Promise<Response> {
+async function request(path: string, options: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {
   const response = await fetch(path, {
     ...options,
     credentials: 'same-origin',
     headers: { Accept: 'application/json', ...options.headers },
     signal: options.signal
-      ? AbortSignal.any([options.signal, AbortSignal.timeout(10_000)])
-      : AbortSignal.timeout(10_000),
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+      : AbortSignal.timeout(timeoutMs),
   })
   if (!response.ok) throw new ApiError(response.status)
   return response
 }
 
-export async function getJson(path: string, signal?: AbortSignal): Promise<unknown> {
-  return (await request(path, { signal })).json()
+export async function getJson(path: string, signal?: AbortSignal, timeoutMs?: number): Promise<unknown> {
+  return (await request(path, { signal }, timeoutMs)).json()
 }
 
 export async function mutate(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<unknown> {

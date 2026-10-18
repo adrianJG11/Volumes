@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
+import { AddBook } from './AddBook'
 import { EditionEditor } from './EditionEditor'
 import { BookCover } from './BookCover'
 import { getBooks, type Book } from './api'
+
+const pageCount = new Intl.NumberFormat('en')
 
 type CatalogState =
   | { status: 'loading' }
@@ -31,6 +34,12 @@ export function Catalog({ accountId, onSessionChanged }: { accountId?: string; o
       : previous)
   }
 
+  function addBook(book: Book) {
+    setState((previous) => previous.status === 'success'
+      ? { status: 'success', books: [...previous.books, book] }
+      : previous)
+  }
+
   function reload() {
     setState({ status: 'loading' })
     setAttempt((previous) => previous + 1)
@@ -46,6 +55,7 @@ export function Catalog({ accountId, onSessionChanged }: { accountId?: string; o
           </p>
         )}
       </div>
+      {accountId && state.status === 'success' && <AddBook key={accountId} onAdded={addBook} onSessionChanged={onSessionChanged} />}
       {state.status === 'loading' && (
         <p role="status" className="py-10 text-muted">Loading books…</p>
       )}
@@ -61,7 +71,7 @@ export function Catalog({ accountId, onSessionChanged }: { accountId?: string; o
       {state.status === 'success' && (state.books.length === 0 ? (
         <div className="py-10">
           <p role="status" className="text-lg font-medium">No books in the catalog yet.</p>
-          <p className="mt-2 text-muted">Check again later for new books.</p>
+          <p className="mt-2 text-muted">{accountId ? 'Add the first one with “Add a book” above.' : 'Check again later for new books.'}</p>
           <button type="button" onClick={reload} className="mt-5 min-h-11 border-b-2 border-accent py-2 font-semibold text-accent hover:border-foreground hover:text-foreground">
             Refresh catalog
           </button>
@@ -75,7 +85,7 @@ export function Catalog({ accountId, onSessionChanged }: { accountId?: string; o
                 <div className="min-w-0">
                   <h3 className="max-w-xl font-serif text-2xl leading-snug text-pretty wrap-anywhere sm:text-3xl">{book.title}</h3>
                   <p className="mt-2 text-sm text-muted wrap-anywhere sm:text-base">{book.author}</p>
-                  {book.edition && (
+                  {book.edition?.sourceUrl && (
                     <a href={book.edition.sourceUrl} target="_blank" rel="noopener noreferrer"
                       aria-label={`View the edition of ${book.title} on Open Library (opens in a new tab)`}
                       className="mt-2 inline-flex min-h-11 items-center text-xs text-muted underline decoration-border underline-offset-4 hover:text-accent">
@@ -85,7 +95,7 @@ export function Catalog({ accountId, onSessionChanged }: { accountId?: string; o
                 </div>
                 <dl className="flex shrink-0 flex-wrap gap-x-5 gap-y-2 text-sm text-muted sm:max-w-40 sm:flex-col sm:text-right">
                   <div className="max-w-40 wrap-anywhere"><dt className="sr-only">Genre</dt><dd>{book.genre}</dd></div>
-                  <div><dt className="sr-only">Length</dt><dd className="tabular-nums">{book.pages} pages</dd></div>
+                  <div><dt className="sr-only">Length</dt><dd className="tabular-nums">{pageCount.format(book.pages)} pages</dd></div>
                 </dl>
               </div>
               {accountId && <EditionEditor key={accountId} book={book} onUpdated={updateBook} onSessionChanged={onSessionChanged} />}

@@ -16,6 +16,7 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
             errors = []
             def new_page():
                 page = browser.new_page()
+                page.route("**/auth/me", lambda route: route.fulfill(status=401, json={"status":401}))
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 return page
 
@@ -41,6 +42,7 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
                 assert page.get_by_role("heading", level=3).all_text_contents() == [b["title"] for b in BOOKS]
                 expect(page.get_by_text("Fyodor Dostoevsky", exact=True)).to_be_visible()
                 expect(page.get_by_text("800 pages", exact=True)).to_be_visible()
+                expect(page.get_by_text("1,000 pages", exact=True)).to_be_visible()
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 if screenshot_dir:
                     page.screenshot(path=f"{screenshot_dir}/catalog-{width}.png", full_page=True)
@@ -81,7 +83,7 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
             print("PASS: empty state refresh, escaped text, long title at 320px")
 
             # Covers use a deterministic local image response; tests never need Open Library.
-            edition = {"isbn": "9780140449242", "openLibraryId": "OL3701480M", "coverId": 8457009,
+            edition = {"isbn": "9780140449242", "openLibraryId": "OL3701480M",
                        "coverUrl": "https://covers.openlibrary.org/b/id/8457009-M.jpg?default=false",
                        "sourceUrl": "https://openlibrary.org/books/OL3701480M"}
             covered = dict(BOOKS[0], edition=edition)
@@ -107,6 +109,54 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 page.close()
             print("PASS: edition attribution, loaded cover, missing cover and failed image fallback")
+
+            page = new_page()
+            created = []
+            suggestion = {"title": "The Hobbit", "author": "J.R.R. Tolkien", "genre": "Fantasy", "pages": 310,
+                          "isbn": "9780395520215", "coverUrl": None, "firstPublishYear": 1937}
+            searches = []
+            def books_route(route):
+                if route.request.method == "POST":
+                    assert route.request.headers["x-csrf-token"] == "token"
+                    created.append(dict(route.request.post_data_json, id="new"))
+                    route.fulfill(status=201, json=created[-1])
+                else:
+                    route.fulfill(json=[])
+            def search_route(route):
+                searches.append(route.request.url)
+                route.fulfill(json=[suggestion] if "hobbit" in route.request.url else [])
+            edition = {"isbn": "9780395520215", "openLibraryId": None, "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg",
+                       "sourceUrl": None}
+            page.route("**/auth/me", lambda route: route.fulfill(json={"id": "reader", "email": "reader@example.com"}))
+            page.route("**/auth/csrf", lambda route: route.fulfill(json={"token": "token", "headerName": "X-CSRF-TOKEN", "parameterName": "_csrf"}))
+            page.route("**/books", books_route)
+            page.route("**/books/search?*", search_route)
+            page.route("**/books/new/edition", lambda route: route.fulfill(json=dict(created[-1], edition=edition)))
+            covers = []
+            page.route("https://is1-ssl.mzstatic.com/**", lambda route: (covers.append(route.request.url), route.fulfill(status=404)))
+            page.goto(base_url)
+            page.get_by_role("button", name="Add a book").click()
+            page.get_by_label("Title").press_sequentially("ho", delay=20)
+            page.wait_for_timeout(900)
+            assert searches == [], "titles shorter than three characters must not search"
+            page.get_by_label("Title").press_sequentially("bbit", delay=20)
+            page.get_by_role("list", name="Matching books").get_by_role("button").click()
+            assert len(searches) == 1, searches
+            assert [page.locator(f"#new-book-{name}").input_value() for name in ["title", "author", "genre", "pages", "isbn"]] \
+                == ["The Hobbit", "J.R.R. Tolkien", "Fantasy", "310", "9780395520215"]
+            page.get_by_label("Genre").fill("Classic fantasy")
+            page.get_by_role("button", name="Add to catalog").click()
+            expect(page.get_by_text("“The Hobbit” was added to the catalog.")).to_be_visible()
+            assert created == [{"title": "The Hobbit", "author": "J.R.R. Tolkien", "genre": "Classic fantasy", "pages": 310, "id": "new"}]
+            expect(page.get_by_role("heading", level=3)).to_have_text(["The Hobbit"])
+            expect(page.get_by_role("button", name="Edit ISBN for The Hobbit")).to_be_visible()
+            # An ISBN Open Library does not know still shows its cover (here from iTunes), without the Open Library link.
+            expect(page.get_by_role("link", name="View the edition", exact=False)).to_have_count(0)
+            # BookCover drops the <img> once the (intercepted) image fails, so by then it was requested.
+            expect(page.locator("li img")).to_have_count(0)
+            assert covers == [edition["coverUrl"]], covers
+            page.close()
+            print("PASS: add book searches after three characters, prefills editable fields, creates and attaches ISBN")
 
             if real_api:
                 page = new_page()

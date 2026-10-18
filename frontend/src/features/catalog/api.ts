@@ -2,20 +2,31 @@ import { getJson, mutate } from '../../api/client'
 
 export type BookEdition = {
   isbn: string
-  openLibraryId: string
-  coverId: number | null
+  openLibraryId: string | null
   coverUrl: string | null
-  sourceUrl: string
+  sourceUrl: string | null
+}
+
+// Same hosts the server allows: Open Library covers and Apple's iTunes artwork.
+export function isCoverUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 1000) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.port === '' && url.username === ''
+      && (url.hostname === 'covers.openlibrary.org' || /^is\d+-ssl\.mzstatic\.com$/.test(url.hostname))
+  } catch {
+    return false
+  }
 }
 
 function isEdition(value: unknown): value is BookEdition {
   if (typeof value !== 'object' || value === null) return false
   const edition = value as Record<string, unknown>
+  const id = edition.openLibraryId
   return typeof edition.isbn === 'string' && /^97[89]\d{10}$/.test(edition.isbn)
-    && typeof edition.openLibraryId === 'string' && /^OL\d+M$/.test(edition.openLibraryId)
-    && (edition.coverId === null || (typeof edition.coverId === 'number' && Number.isSafeInteger(edition.coverId) && edition.coverId > 0))
-    && edition.sourceUrl === `https://openlibrary.org/books/${edition.openLibraryId}`
-    && edition.coverUrl === (edition.coverId === null ? null : `https://covers.openlibrary.org/b/id/${edition.coverId}-M.jpg?default=false`)
+    && (id === null || (typeof id === 'string' && /^OL\d+M$/.test(id)))
+    && edition.sourceUrl === (id === null ? null : `https://openlibrary.org/books/${id}`)
+    && (edition.coverUrl === null || isCoverUrl(edition.coverUrl))
 }
 
 export type Book = {
@@ -53,4 +64,39 @@ export async function saveEdition(id: string, isbn: string): Promise<Book> {
 
 export async function removeEdition(id: string): Promise<void> {
   await mutate(`/books/${encodeURIComponent(id)}/edition`, 'DELETE')
+}
+
+export type BookSuggestion = {
+  title: string
+  author: string | null
+  genre: string | null
+  pages: number | null
+  isbn: string | null
+  coverUrl: string | null
+  firstPublishYear: number | null
+}
+
+function isSuggestion(value: unknown): value is BookSuggestion {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Record<string, unknown>
+  const optional = (key: string, type: 'string' | 'number') => item[key] === null || typeof item[key] === type
+  return typeof item.title === 'string' && optional('author', 'string') && optional('genre', 'string')
+    && optional('pages', 'number') && optional('firstPublishYear', 'number')
+    && (item.isbn === null || (typeof item.isbn === 'string' && /^97[89]\d{10}$/.test(item.isbn)))
+    && (item.coverUrl === null || isCoverUrl(item.coverUrl))
+}
+
+export async function searchBooks(query: string, signal: AbortSignal): Promise<BookSuggestion[]> {
+  // The first search for a popular work also downloads its edition list, which can take several seconds.
+  const data = await getJson(`/books/search?q=${encodeURIComponent(query)}`, signal, 20_000)
+  if (!Array.isArray(data) || !data.every(isSuggestion)) throw new Error('Unexpected search response')
+  return data
+}
+
+export type NewBook = { title: string; author: string; genre: string; pages: number }
+
+export async function createBook(book: NewBook): Promise<Book> {
+  const data = await mutate('/books', 'POST', book)
+  if (!isBook(data)) throw new Error('Unexpected book response')
+  return data
 }

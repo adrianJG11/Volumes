@@ -63,11 +63,18 @@ export function Catalog() {
         <ul className="divide-y divide-border">
           {state.books.map((book) => (
             <li key={book.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 py-7 sm:gap-x-8 sm:py-8">
-              <BookCover />
+              <BookCover key={book.edition?.coverUrl ?? 'missing'} url={book.edition?.coverUrl} />
               <div className="flex min-w-0 flex-col justify-between gap-5 py-1 sm:flex-row sm:gap-8">
                 <div className="min-w-0">
                   <h3 className="max-w-xl font-serif text-2xl leading-snug text-pretty wrap-anywhere sm:text-3xl">{book.title}</h3>
                   <p className="mt-2 text-sm text-muted wrap-anywhere sm:text-base">{book.author}</p>
+                  {book.edition && (
+                    <a href={book.edition.sourceUrl} target="_blank" rel="noopener noreferrer"
+                      aria-label={`View the edition of ${book.title} on Open Library (opens in a new tab)`}
+                      className="mt-2 inline-flex min-h-11 items-center text-xs text-muted underline decoration-border underline-offset-4 hover:text-accent">
+                      Edition on Open Library
+                    </a>
+                  )}
                 </div>
                 <dl className="flex shrink-0 flex-wrap gap-x-5 gap-y-2 text-sm text-muted sm:max-w-40 sm:flex-col sm:text-right">
                   <div className="max-w-40 wrap-anywhere"><dt className="sr-only">Genre</dt><dd>{book.genre}</dd></div>

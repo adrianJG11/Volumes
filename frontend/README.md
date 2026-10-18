@@ -58,3 +58,7 @@ With Vite running, execute the Playwright helper from WSL:
 ```
 
 The deterministic checks intercept browser requests to exercise loading, loaded/empty catalogs, HTTP/network errors, malformed responses, recovery, narrow layouts, and escaped book titles. They do not write to a backend. Optional `--real-api` also verifies a nonempty running Java catalog through the real proxy. Use a seeded disposable test database for that integration check. `--screenshots /tmp/catalog-check` saves desktop/mobile images.
+
+## Edition covers
+
+The catalog reads optional edition metadata from Java. It renders uncropped Open Library images in a fixed 2:3 area, with a source link and a fallback for unavailable covers. Association is currently managed through the authenticated API documented in the root README; there is no ISBN editing form yet.

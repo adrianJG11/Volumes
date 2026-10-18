@@ -1,5 +1,6 @@
 """Run with the isolated Playwright Python interpreter and Vite already running."""
 import argparse
+import base64
 from playwright.sync_api import sync_playwright, expect
 
 BOOKS = [
@@ -78,6 +79,34 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             page.close()
             print("PASS: empty state refresh, escaped text, long title at 320px")
+
+            # Covers use a deterministic local image response; tests never need Open Library.
+            edition = {"isbn": "9780140449242", "openLibraryId": "OL3701480M", "coverId": 8457009,
+                       "coverUrl": "https://covers.openlibrary.org/b/id/8457009-M.jpg?default=false",
+                       "sourceUrl": "https://openlibrary.org/books/OL3701480M"}
+            covered = dict(BOOKS[0], edition=edition)
+            for succeeds in [True, False]:
+                page = new_page()
+                page.route("**/books", lambda route: route.fulfill(json=[covered, BOOKS[1]]))
+                def cover_response(route):
+                    if succeeds:
+                        route.fulfill(content_type="image/png", body=base64.b64decode(
+                            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="))
+                    else:
+                        route.fulfill(status=404, body="No cover")
+                page.route("https://covers.openlibrary.org/**", cover_response)
+                page.set_viewport_size({"width": 390, "height": 900})
+                page.goto(base_url)
+                expect(page.get_by_role("link", name="View the edition", exact=False)).to_have_attribute("href", edition["sourceUrl"])
+                if succeeds:
+                    page.wait_for_function("document.querySelector('li img')?.naturalWidth > 0")
+                    expect(page.locator("li").nth(1).get_by_text("No cover")).to_be_visible()
+                else:
+                    expect(page.locator("li").first.get_by_text("No cover")).to_be_visible()
+                    expect(page.locator("li img")).to_have_count(0)
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                page.close()
+            print("PASS: edition attribution, loaded cover, missing cover and failed image fallback")
 
             if real_api:
                 page = new_page()

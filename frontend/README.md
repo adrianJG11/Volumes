@@ -1,6 +1,6 @@
 # Volumes frontend
 
-React + TypeScript + Vite, styled with Tailwind CSS v4. This first increment is a static starter screen; authentication and catalog API integration follow in issue #15.
+React + TypeScript + Vite, styled with Tailwind CSS v4. The catalog reads real books from the Java API. Authentication follows in issue #15.
 
 ## Run in WSL
 
@@ -33,10 +33,28 @@ Build runs TypeScript checks and generates production files in `dist/`. Preview 
 - `package.json`: dependencies and commands, similar to the dependency/build roles of pom.xml.
 - `tsconfig*.json`: TypeScript checking configuration.
 
-Use feature folders for auth and catalog when those features are introduced. No API requests, login controls, sample library data, or frontend test suite are implemented yet.
+Use feature folders for auth and catalog when those features are introduced. The catalog lives in `src/features/catalog/`; `src/api/client.ts` handles JSON GET requests, HTTP errors, and a 10-second timeout. Login controls are not implemented yet.
 
 ## Visual direction
 
 White background, slate text, blue accent, and a serif reading headline. Color names in `@theme` generate utilities such as `text-accent`; components should reuse those tokens. Keep motion minimal and preserve keyboard focus, readable contrast, and narrow-screen layouts.
 
-Browser inspection uses the WSL Playwright tool environment. Frontend end-to-end tests will be added with the first real user flow.
+Browser inspection uses the WSL Playwright tool environment. Catalog browser checks are described below.
+
+## Catalog API connection
+
+Start PostgreSQL and the Java API from the repository root as described in the main README, then run the frontend. Vite proxies `/books` to `http://127.0.0.1:8080` by default. The browser uses a relative URL, so backend CORS changes are unnecessary. `API_TARGET` can override the backend address for isolated tests; it is a server-side Vite setting, not a browser secret.
+
+The catalog distinguishes loading, successful empty results, loaded books, and failures. Retry/refresh starts another request. Effect cleanup cancels obsolete requests, including React Strict Mode's development checks. JSON is checked at runtime because TypeScript types do not validate network responses.
+
+The proxy is development-only. Production hosting will need to route API paths to Java as well; `vite preview` is not that deployment setup.
+
+## Catalog browser checks
+
+With Vite running, execute the Playwright helper from WSL:
+
+```bash
+"$(uv tool dir)/playwright/bin/python" tests/catalog_browser.py
+```
+
+The deterministic checks intercept browser requests to exercise loading, loaded/empty catalogs, HTTP/network errors, malformed responses, recovery, narrow layouts, and escaped book titles. They do not write to a backend. Optional `--real-api` also verifies a nonempty running Java catalog through the real proxy. Use a seeded disposable test database for that integration check. `--screenshots /tmp/catalog-check` saves desktop/mobile images.

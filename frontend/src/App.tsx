@@ -1,3 +1,5 @@
+import { Catalog } from './features/catalog/Catalog'
+
 function App() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -15,14 +17,15 @@ function App() {
           <span className="text-xl font-semibold">Volumes</span>
         </div>
       </header>
-      <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-6 py-20 sm:px-10 sm:py-28">
-        <h1 className="max-w-2xl font-serif text-5xl leading-tight text-balance sm:text-7xl">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-6 py-12 sm:px-10 sm:py-16">
+        <h1 className="max-w-2xl font-serif text-4xl leading-tight text-balance sm:text-5xl">
           Your books, at your pace.
         </h1>
         <p className="mt-6 max-w-lg text-lg leading-8 text-muted text-pretty">
           Keep a place for the books you want to read, the ones you’re reading,
           and the stories you’ve finished.
         </p>
+        <Catalog />
       </main>
     </div>
   )

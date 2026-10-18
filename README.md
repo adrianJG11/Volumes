@@ -76,24 +76,25 @@ curl -i -X PUT http://localhost:8080/books/BOOK_ID/edition \
   -d '{"isbn":"9780140449242"}'
 ```
 
-Java validates ISBN-10/13 check digits, normalizes to ISBN-13, and resolves the edition using
-[Open Library's ISBN API](https://openlibrary.org/dev/docs/api/books). PostgreSQL stores the ISBN,
-Open Library edition ID, and optional cover ID. This does not import or overwrite title, author,
-genre or page count: choose the ISBN that matches the book. Regular metadata edits preserve the
-association; remove or replace it if changing editions. Duplicate catalog entries remain allowed.
+Java validates ISBN-10/13 check digits and normalizes to ISBN-13. It asks
+[Open Library's ISBN API](https://openlibrary.org/dev/docs/api/books) for the edition and its cover; when
+Open Library has no cover, it asks Apple's free iTunes Search API by ISBN (600×600 artwork). A valid ISBN
+is saved even when Open Library does not know it or is down; it then has no Open Library link. Only HTTPS
+covers from `covers.openlibrary.org` and `is*-ssl.mzstatic.com` are stored. This does not import or
+overwrite title, author, genre or page count. Regular metadata edits preserve the association; remove or
+replace it if changing editions. Duplicate catalog entries remain allowed.
 
 Catalog and personal-library responses include an optional `edition` object with `isbn`,
-`openLibraryId`, `coverId`, `coverUrl`, and `sourceUrl`. Books without an association omit it.
-The browser loads [covers directly from Open Library](https://openlibrary.org/dev/docs/api/covers),
-links to the source edition, and keeps the placeholder when no cover exists or loading fails.
-No image files are stored locally. The catalog never calls the metadata provider on ordinary reads.
+`openLibraryId`, `coverUrl`, and `sourceUrl` (the Open Library page, or `null`). Books without an
+association omit it. The browser loads covers directly from those hosts, links to Open Library when there
+is an edition there, and keeps the placeholder when no cover exists or loading fails. No image files are
+stored locally. The catalog never calls external providers on ordinary reads.
 
-Repeating the same ISBN association returns the saved edition without another external lookup.
-A new lookup is limited to one per second per application instance (`429` otherwise).
-Invalid ISBNs return `400`; unknown books/ISBNs return `404`; invalid provider responses return
-`502`; provider failures or timeouts return `503`. Failures leave the existing association intact.
-The HTTP request timeout defaults to five seconds; `open-library.timeout` and
-`open-library.base-url` can be overridden for isolated tests. Tests use local fixtures, not live APIs.
+Repeating the same ISBN association reuses a saved cover. If the saved edition has no cover, it performs another lookup so a temporary provider failure can recover.
+Open Library lookups are limited to one per second per application instance (`429`, nothing changes;
+the frontend retries once). Invalid ISBNs return `400`; unknown books return `404`. The HTTP timeouts
+default to five seconds; `open-library.base-url`, `open-library.timeout` and `itunes.base-url` can be
+overridden for isolated tests. Tests use a local fake provider server, never the live APIs.
 
 Remove the association without deleting the book:
 
@@ -102,7 +103,32 @@ curl -i -X DELETE http://localhost:8080/books/BOOK_ID/edition \
   -b /tmp/volumes-cookies.txt -H "X-CSRF-TOKEN: $CSRF"
 ```
 
-The authenticated editing form and full ISBN metadata import are not implemented yet.
+## Book search
+
+Signed-in readers can search [Open Library](https://openlibrary.org/developers/api) by title to prefill a
+new catalog book. Its reader counts identify the work people mean, and its edition lists contain the
+well-known publishers.
+
+```bash
+curl -i 'http://localhost:8080/books/search?q=the%20hobbit' -b /tmp/volumes-cookies.txt
+```
+
+It returns up to five suggestions with `title`, `author`, `genre`, `pages`, `isbn`, `coverUrl`, and
+`firstPublishYear`; any field except `title` may be `null`. Search reads nothing from and writes
+nothing to the catalog. The most-read matching work comes first, shown as up to three
+English editions from well-known publishers (for "the count of monte cristo": Penguin, Oxford World's
+Classics, Modern Library), each publisher's longest edition with a cover so abridged versions lose. This
+costs one extra request for the work's first 500 editions (a few seconds for very popular works; the last
+200 works are remembered in memory). Other results must contain every typed word in their title (ignoring
+case, accents and articles); Open Library's top hit is the exception, so "1984" still finds *Nineteen
+Eighty-Four*. `genre` is the first subject naming a known genre (editable before adding). Queries must be 2–100 characters (`400`). Anonymous requests return `401`.
+Open Library allows one lookup per second per application instance (`429`); provider errors map to
+`502`/`503` like edition lookups.
+
+In the frontend, signed-in readers use **Add a book**: typing at least three characters searches after a short
+pause, choosing a match fills every field, and all fields stay editable. Adding creates the book with
+`POST /books`, then associates the ISBN (if any) to show its cover. If that second step fails, the book is
+kept and the reader can retry with **Add ISBN**.
 
 ## Console
 

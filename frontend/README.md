@@ -1,6 +1,6 @@
 # Volumes frontend
 
-React + TypeScript + Vite, styled with Tailwind CSS v4. The catalog reads real books from the Java API. Authentication follows in issue #15.
+React + TypeScript + Vite, styled with Tailwind CSS v4. The catalog reads real books from the Java API. Registration, session login/logout, book creation and ISBN editing are available. Dedicated authentication screens are tracked in issue #17; personal-library ratings in #18.
 
 ## Run in WSL
 
@@ -33,11 +33,11 @@ Build runs TypeScript checks and generates production files in `dist/`. Preview 
 - `package.json`: dependencies and commands, similar to the dependency/build roles of pom.xml.
 - `tsconfig*.json`: TypeScript checking configuration.
 
-Use feature folders for auth and catalog when those features are introduced. The catalog lives in `src/features/catalog/`; `src/api/client.ts` handles JSON GET requests, HTTP errors, and a 10-second timeout. Login controls are not implemented yet.
+Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication currently uses an inline panel; issue #17 moves it onto dedicated screens.
 
 ## Visual direction
 
-Open editorial rows, a large serif masthead, white background, slate text, and a burgundy accent. No rounded cards. Each book reserves a 2:3 cover slot with an explicit missing-cover placeholder; actual cover URLs and images are a later API feature. Color names in `@theme` generate utilities such as `text-accent`; components should reuse those tokens. Keep motion minimal and preserve keyboard focus, readable contrast, and narrow-screen layouts.
+Open editorial rows, a large serif masthead, white background, slate text, and a burgundy accent. No rounded cards. Each book reserves a 2:3 cover slot with an explicit missing-cover placeholder; edition images load when a cover URL is available. Color names in `@theme` generate utilities such as `text-accent`; components should reuse those tokens. Keep motion minimal and preserve keyboard focus, readable contrast, and narrow-screen layouts.
 
 Browser inspection uses the WSL Playwright tool environment. Catalog browser checks are described below.
 
@@ -61,4 +61,25 @@ The deterministic checks intercept browser requests to exercise loading, loaded/
 
 ## Edition covers
 
-The catalog reads optional edition metadata from Java. It renders uncropped Open Library images in a fixed 2:3 area, with a source link and a fallback for unavailable covers. Association is currently managed through the authenticated API documented in the root README; there is no ISBN editing form yet.
+The catalog reads optional edition metadata from Java. It renders uncropped Open Library or iTunes images in a fixed 2:3 area, with an Open Library edition link when available and a fallback for missing images. Signed-in readers can add, change or remove an ISBN using the editor below each book. The add-book form can prefill fields from title search and attach an optional ISBN. A missing cover can be looked up again by saving the same ISBN. Session, catalog and ISBN browser checks run in CI alongside the Java checks.
+
+## Complete browser verification
+
+From the repository root, with Docker running and `mvn verify` completed:
+
+```bash
+cd frontend && npm ci && cd ..
+PYTHONDONTWRITEBYTECODE=1 "$(uv tool dir)/playwright/bin/python" frontend/tests/run_browser.py
+```
+
+Use the Playwright version pinned in `frontend/tests/requirements.txt`. The runner starts its own
+PostgreSQL database, packaged Java API and Vite server on temporary ports, then cleans up only those
+resources. Provider responses come from a local HTTP fixture; neither CI nor these tests call live
+Open Library or iTunes. Chromium tests exercise registration, duplicate-email/wrong-password errors,
+pending controls, cookie-session reload, fresh CSRF tokens, creating a book, ISBN save/removal,
+logout and session loss. CI installs the pinned browser runtime, runs npm lint/build and invokes the
+same runner; a local pass is separate from the GitHub Actions result on the PR.
+
+## Testing approach
+
+Prefer API integration tests with disposable PostgreSQL and a few browser journeys for user-visible behavior. Keep isolated unit tests only for meaningful pure logic, such as ISBN validation. Avoid repeating every validation case through the browser or adding tests that mirror implementation details. External book providers use local fixtures in automated tests.

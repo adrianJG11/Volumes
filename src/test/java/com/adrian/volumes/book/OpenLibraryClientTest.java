@@ -35,7 +35,7 @@ class OpenLibraryClientTest {
     @Test
     void resolvesEditionAndPositiveCoverIdUsingCanonicalIsbn() {
         var edition = client.findEdition("0-14-044924-8");
-        assertEquals(new BookEdition("9780140449242", "OL123M", 42L), edition);
+        assertEquals(new BookEdition("9780140449242", "OL123M", "https://covers.openlibrary.org/b/id/42-M.jpg?default=false"), edition);
         assertEquals("https://covers.openlibrary.org/b/id/42-M.jpg?default=false", edition.coverUrl());
         assertEquals("https://openlibrary.org/books/OL123M", edition.sourceUrl());
         assertEquals(1, calls.get());

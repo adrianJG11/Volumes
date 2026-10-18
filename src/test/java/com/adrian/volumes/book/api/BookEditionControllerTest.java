@@ -25,11 +25,13 @@ class BookEditionControllerTest {
     @Autowired UserRegistration registration;
     @Autowired BookCatalog catalog;
     @MockitoBean OpenLibraryClient provider;
+    @MockitoBean ItunesClient itunes;
     private ApiClient client;
     private UUID bookId;
     private String path;
     private final JsonMapper json = JsonMapper.builder().build();
     private static final String ISBN = "9780140449242";
+    private static final String COVER = "https://covers.openlibrary.org/b/id/42-M.jpg?default=false";
     private static final String BODY = "{\"isbn\":\"0-14-044924-8\"}";
 
     @BeforeEach
@@ -39,7 +41,7 @@ class BookEditionControllerTest {
         assertEquals(204, client.login("covers@example.com", "edition test passphrase").statusCode());
         bookId = catalog.create("The Brothers Karamazov", "Fyodor Dostoevsky", "Fiction", 1013).id();
         path = "/books/" + bookId + "/edition";
-        when(provider.findEdition(ISBN)).thenReturn(new BookEdition(ISBN, "OL123M", 42L));
+        when(provider.findEdition(ISBN)).thenReturn(new BookEdition(ISBN, "OL123M", COVER));
     }
 
     @AfterEach void close() { client.close(); }
@@ -49,7 +51,9 @@ class BookEditionControllerTest {
         var response = client.request("PUT", path, BODY);
         assertEquals(200, response.statusCode(), response.body());
         var saved = json.readValue(response.body(), BookResponse.class);
-        assertEquals(ISBN, saved.edition().isbn());
+        assertEquals(new BookEdition(ISBN, "OL123M", COVER), saved.edition());
+        assertEquals("https://openlibrary.org/books/OL123M", saved.edition().sourceUrl());
+        verifyNoInteractions(itunes); // Open Library already had a cover
         assertEquals("The Brothers Karamazov", saved.title());
         assertEquals(saved, json.readValue(client.request("GET", "/books/" + bookId, null).body(), BookResponse.class));
         assertEquals(saved, json.readValue(client.request("GET", "/books", null).body(), BookResponse[].class)[0]);
@@ -65,15 +69,45 @@ class BookEditionControllerTest {
     }
 
     @Test
-    void failureNeverReplacesAnExistingEdition() throws Exception {
+    void savesIsbnsOpenLibraryDoesNotKnowWithACoverFromAnotherSource() throws Exception {
+        String other = "9788439710349", artwork = "https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg";
+        for (int status : new int[]{404, 502, 503}) {
+            doThrow(new ResponseStatusException(HttpStatus.valueOf(status))).when(provider).findEdition(other);
+            when(itunes.findCover(other)).thenReturn(artwork);
+            assertEquals(200, client.request("PUT", path, BODY).statusCode());
+            var saved = client.request("PUT", path, "{\"isbn\":\"" + other + "\"}");
+            assertEquals(200, saved.statusCode(), saved.body());
+            var edition = json.readValue(saved.body(), BookResponse.class).edition();
+            assertEquals(new BookEdition(other, null, artwork), edition);
+            assertFalse(json.readTree(saved.body()).path("edition").has("coverId"));
+            assertTrue(json.readTree(saved.body()).path("edition").path("sourceUrl").isNull());
+        }
+    }
+
+    @Test
+    void sameIsbnCanRecoverACoverAfterProviderFailure() throws Exception {
+        when(provider.findEdition(ISBN))
+            .thenThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE))
+            .thenReturn(new BookEdition(ISBN, "OL123M", COVER));
+        var first = client.request("PUT", path, BODY);
+        assertEquals(200, first.statusCode(), first.body());
+        assertNull(json.readValue(first.body(), BookResponse.class).edition().coverUrl());
+
+        var retry = client.request("PUT", path, BODY);
+        assertEquals(200, retry.statusCode(), retry.body());
+        assertEquals(COVER, json.readValue(retry.body(), BookResponse.class).edition().coverUrl());
+        assertEquals(COVER, catalog.findById(bookId).orElseThrow().edition().coverUrl());
+        verify(provider, times(2)).findEdition(ISBN);
+    }
+
+    @Test
+    void rateLimitedLookupsNeverReplaceAnExistingEdition() throws Exception {
         assertEquals(200, client.request("PUT", path, BODY).statusCode());
         var before = catalog.findById(bookId).orElseThrow().edition();
-        for (int status : new int[]{404, 502, 503}) {
-            doThrow(new ResponseStatusException(HttpStatus.valueOf(status))).when(provider).findEdition("9780140449266");
-            var failed = client.request("PUT", path, "{\"isbn\":\"9780140449266\"}");
-            assertEquals(status, failed.statusCode(), failed.body());
-            assertEquals(before, catalog.findById(bookId).orElseThrow().edition());
-        }
+        doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS)).when(provider).findEdition("9780140449266");
+        var failed = client.request("PUT", path, "{\"isbn\":\"9780140449266\"}");
+        assertEquals(429, failed.statusCode(), failed.body());
+        assertEquals(before, catalog.findById(bookId).orElseThrow().edition());
     }
 
     @Test
@@ -87,7 +121,7 @@ class BookEditionControllerTest {
             assertEquals(401, anonymous.request("PUT", path, BODY).statusCode());
             assertEquals(401, anonymous.request("DELETE", path, null).statusCode());
         }
-        verifyNoInteractions(provider);
+        verifyNoInteractions(provider, itunes);
         assertNull(catalog.findById(bookId).orElseThrow().edition());
     }
 }

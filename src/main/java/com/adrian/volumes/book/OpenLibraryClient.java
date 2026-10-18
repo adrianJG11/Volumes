@@ -56,7 +56,7 @@ public class OpenLibraryClient {
                     }
                 }
             }
-            return new BookEdition(isbn, key.substring("/books/".length()), coverId);
+            return new BookEdition(isbn, key.substring("/books/".length()), coverId == null ? null : CoverUrls.openLibraryCover(coverId));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw unavailable();

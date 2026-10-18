@@ -26,6 +26,8 @@ public class SecurityConfiguration {
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(access -> access
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                // Searching calls Open Library, so it is limited to signed-in readers who can add books.
+                .requestMatchers(HttpMethod.GET, "/books/search").authenticated()
                 .requestMatchers(HttpMethod.GET, "/auth/csrf", "/books", "/books/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
                 .anyRequest().authenticated())

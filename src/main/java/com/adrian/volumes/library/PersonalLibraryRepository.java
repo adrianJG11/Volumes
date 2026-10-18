@@ -1,5 +1,6 @@
 package com.adrian.volumes.library;
 
+import com.adrian.volumes.book.BookEdition;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -12,7 +13,9 @@ public class PersonalLibraryRepository {
     private static final RowMapper<LibraryEntry> ENTRY = (row, number) -> new LibraryEntry(
         row.getObject("book_id", UUID.class), row.getString("title"), row.getString("author"),
         row.getString("genre"), row.getInt("pages"), ReadingStatus.valueOf(row.getString("status")),
-        row.getObject("rating", Integer.class));
+        row.getObject("rating", Integer.class),
+        row.getString("isbn") == null ? null : new BookEdition(row.getString("isbn"),
+            row.getString("open_library_id"), row.getString("cover_url")));
     private final JdbcClient jdbc;
 
     public PersonalLibraryRepository(JdbcClient jdbc) { this.jdbc = jdbc; }
@@ -24,14 +27,14 @@ public class PersonalLibraryRepository {
                 ON CONFLICT (user_id, book_id) DO NOTHING
                 RETURNING book_id, status, rating
             )
-            SELECT a.book_id, b.title, b.author, b.genre, b.pages, a.status, a.rating
+            SELECT a.book_id, b.title, b.author, b.genre, b.pages, b.isbn, b.open_library_id, b.cover_url, a.status, a.rating
             FROM added a JOIN books b ON b.id = a.book_id
             """).param("userId", userId).param("bookId", bookId).query(ENTRY).optional();
     }
 
     public List<LibraryEntry> list(UUID userId) {
         return jdbc.sql("""
-            SELECT e.book_id, b.title, b.author, b.genre, b.pages, e.status, e.rating
+            SELECT e.book_id, b.title, b.author, b.genre, b.pages, b.isbn, b.open_library_id, b.cover_url, e.status, e.rating
             FROM library_entries e JOIN books b ON b.id = e.book_id
             WHERE e.user_id = :userId ORDER BY e.addition_order
             """).param("userId", userId).query(ENTRY).list();
@@ -44,7 +47,7 @@ public class PersonalLibraryRepository {
                 WHERE user_id = :userId AND book_id = :bookId
                 RETURNING book_id, status, rating
             )
-            SELECT u.book_id, b.title, b.author, b.genre, b.pages, u.status, u.rating
+            SELECT u.book_id, b.title, b.author, b.genre, b.pages, b.isbn, b.open_library_id, b.cover_url, u.status, u.rating
             FROM updated u JOIN books b ON b.id = u.book_id
             """).param("userId", userId).param("bookId", bookId).param("status", status.name())
             .query(ENTRY).optional();
@@ -57,7 +60,7 @@ public class PersonalLibraryRepository {
                 WHERE user_id = :userId AND book_id = :bookId
                 RETURNING book_id, status, rating
             )
-            SELECT u.book_id, b.title, b.author, b.genre, b.pages, u.status, u.rating
+            SELECT u.book_id, b.title, b.author, b.genre, b.pages, b.isbn, b.open_library_id, b.cover_url, u.status, u.rating
             FROM updated u JOIN books b ON b.id = u.book_id
             """).param("userId", userId).param("bookId", bookId).param("rating", rating)
             .query(ENTRY).optional();

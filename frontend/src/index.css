@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #172b3a;
+  --color-muted: #50616d;
+  --color-accent: #8b3347;
+  --color-cover: #eef0f2;
+  --color-cover-spine: #c1c8d0;
+  --color-border: #dce3e8;
+  --font-sans: "Segoe UI", "Liberation Sans", sans-serif;
+  --font-serif: "Charter", "Bitstream Charter", "Liberation Serif", Georgia, serif;
+}
+
+@layer base {
+  html {
+    /* The palette is light-only, so keep native inputs and scrollbars light too. */
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+  }
+
+  a, button {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+}

@@ -7,7 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = BookController.class)
+@RestControllerAdvice(assignableTypes = {BookController.class, BookEditionController.class, BookSearchController.class})
 @Order(-1)
 public class BookErrorHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)

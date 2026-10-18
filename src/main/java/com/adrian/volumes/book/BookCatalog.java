@@ -8,7 +8,9 @@ import java.util.UUID;
 
 @Service
 public class BookCatalog {
-    public record Entry(UUID id, Book book) {}
+    public record Entry(UUID id, Book book, BookEdition edition) {
+        public Entry(UUID id, Book book) { this(id, book, null); }
+    }
 
     private final BookRepository repository;
 

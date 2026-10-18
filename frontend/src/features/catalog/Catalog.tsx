@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EditionEditor } from './EditionEditor'
 import { BookCover } from './BookCover'
 import { getBooks, type Book } from './api'
 
@@ -7,7 +8,7 @@ type CatalogState =
   | { status: 'success'; books: Book[] }
   | { status: 'error' }
 
-export function Catalog() {
+export function Catalog({ accountId, onSessionChanged }: { accountId?: string; onSessionChanged: () => void }) {
   const [state, setState] = useState<CatalogState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -23,6 +24,12 @@ export function Catalog() {
     )
     return () => controller.abort()
   }, [attempt])
+
+  function updateBook(book: Book) {
+    setState((previous) => previous.status === 'success'
+      ? { status: 'success', books: previous.books.map((item) => item.id === book.id ? book : item) }
+      : previous)
+  }
 
   function reload() {
     setState({ status: 'loading' })
@@ -81,6 +88,7 @@ export function Catalog() {
                   <div><dt className="sr-only">Length</dt><dd className="tabular-nums">{book.pages} pages</dd></div>
                 </dl>
               </div>
+              {accountId && <EditionEditor key={accountId} book={book} onUpdated={updateBook} onSessionChanged={onSessionChanged} />}
             </li>
           ))}
         </ul>

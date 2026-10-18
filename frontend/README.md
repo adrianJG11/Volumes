@@ -43,7 +43,7 @@ Browser inspection uses the WSL Playwright tool environment. Catalog browser che
 
 ## Catalog API connection
 
-Start PostgreSQL and the Java API from the repository root as described in the main README, then run the frontend. Vite proxies `/books` to `http://127.0.0.1:8080` by default. The browser uses a relative URL, so backend CORS changes are unnecessary. `API_TARGET` can override the backend address for isolated tests; it is a server-side Vite setting, not a browser secret.
+Start PostgreSQL and the Java API from the repository root as described in the main README, then run the frontend. Vite proxies `/books`, `/auth`, and `/me` to `http://127.0.0.1:8080` by default, so the session cookie stays same-origin. The browser uses a relative URL, so backend CORS changes are unnecessary. `API_TARGET` can override the backend address for isolated tests; it is a server-side Vite setting, not a browser secret.
 
 The catalog distinguishes loading, successful empty results, loaded books, and failures. Retry/refresh starts another request. Effect cleanup cancels obsolete requests, including React Strict Mode's development checks. JSON is checked at runtime because TypeScript types do not validate network responses.
 

@@ -1,4 +1,4 @@
-import { getJson } from '../../api/client'
+import { getJson, mutate } from '../../api/client'
 
 export type BookEdition = {
   isbn: string
@@ -43,4 +43,14 @@ export async function getBooks(signal: AbortSignal): Promise<Book[]> {
     throw new Error('Unexpected catalog response')
   }
   return data
+}
+
+export async function saveEdition(id: string, isbn: string): Promise<Book> {
+  const data = await mutate(`/books/${encodeURIComponent(id)}/edition`, 'PUT', { isbn })
+  if (!isBook(data) || data.id !== id) throw new Error('Unexpected book response')
+  return data
+}
+
+export async function removeEdition(id: string): Promise<void> {
+  await mutate(`/books/${encodeURIComponent(id)}/edition`, 'DELETE')
 }

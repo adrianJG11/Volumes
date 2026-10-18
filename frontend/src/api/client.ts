@@ -1,11 +1,44 @@
-export async function getJson(path: string, signal: AbortSignal): Promise<unknown> {
-  const response = await fetch(path, {
-    headers: { Accept: 'application/json' },
-    credentials: 'same-origin',
-    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
-  })
+export class ApiError extends Error {
+  readonly status: number
 
-  // fetch rejects network failures, but HTTP 4xx/5xx need an explicit check.
-  if (!response.ok) throw new Error(`Request failed (${response.status})`)
-  return response.json()
+  constructor(status: number) {
+    super(`Request failed (${status})`)
+    this.status = status
+  }
+}
+
+async function request(path: string, options: RequestInit = {}): Promise<Response> {
+  const response = await fetch(path, {
+    ...options,
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json', ...options.headers },
+    signal: options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
+  })
+  if (!response.ok) throw new ApiError(response.status)
+  return response
+}
+
+export async function getJson(path: string, signal?: AbortSignal): Promise<unknown> {
+  return (await request(path, { signal })).json()
+}
+
+export async function mutate(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<unknown> {
+  // Fetch a fresh token for each action, including after login rotates the session.
+  const csrf = await getJson('/auth/csrf')
+  if (typeof csrf !== 'object' || csrf === null || !('token' in csrf)
+      || typeof csrf.token !== 'string' || !('headerName' in csrf) || csrf.headerName !== 'X-CSRF-TOKEN') {
+    throw new Error('Unexpected CSRF response')
+  }
+  const form = body instanceof URLSearchParams
+  const response = await request(path, {
+    method,
+    headers: {
+      'X-CSRF-TOKEN': csrf.token,
+      ...(body === undefined ? {} : { 'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json' }),
+    },
+    body: body === undefined ? undefined : form ? body.toString() : JSON.stringify(body),
+  })
+  return response.status === 204 ? undefined : response.json()
 }

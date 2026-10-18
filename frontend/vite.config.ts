@@ -9,6 +9,12 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      '/auth': {
+        target: process.env.API_TARGET ?? 'http://127.0.0.1:8080',
+      },
+      '/me': {
+        target: process.env.API_TARGET ?? 'http://127.0.0.1:8080',
+      },
       '/books': {
         target: process.env.API_TARGET ?? 'http://127.0.0.1:8080',
       },

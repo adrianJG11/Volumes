@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #172b3a;
+  --color-muted: #50616d;
+  --color-accent: #215dba;
+  --color-border: #dce3e8;
+  --font-sans: "Segoe UI", "Liberation Sans", sans-serif;
+  --font-serif: "Charter", "Bitstream Charter", "Liberation Serif", Georgia, serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-width: 320px;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+}

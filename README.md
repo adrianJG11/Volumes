@@ -65,6 +65,45 @@ Replace `BOOK_ID` with the actual UUID. PUT requires all four fields and preserv
 
 Created and updated books survive API restarts. Catalog reads are public; creating or updating shared books requires a signed-in account and a valid CSRF token. Any signed-in account may edit shared catalog metadata in this collaborative MVP. Personal libraries enforce separate owner checks.
 
+## Edition covers
+
+Associate an existing catalog book with the ISBN of its edition (session and CSRF required):
+
+```bash
+curl -i -X PUT http://localhost:8080/books/BOOK_ID/edition \
+  -b /tmp/volumes-cookies.txt -H "X-CSRF-TOKEN: $CSRF" \
+  -H 'Content-Type: application/json' \
+  -d '{"isbn":"9780140449242"}'
+```
+
+Java validates ISBN-10/13 check digits, normalizes to ISBN-13, and resolves the edition using
+[Open Library's ISBN API](https://openlibrary.org/dev/docs/api/books). PostgreSQL stores the ISBN,
+Open Library edition ID, and optional cover ID. This does not import or overwrite title, author,
+genre or page count: choose the ISBN that matches the book. Regular metadata edits preserve the
+association; remove or replace it if changing editions. Duplicate catalog entries remain allowed.
+
+Catalog and personal-library responses include an optional `edition` object with `isbn`,
+`openLibraryId`, `coverId`, `coverUrl`, and `sourceUrl`. Books without an association omit it.
+The browser loads [covers directly from Open Library](https://openlibrary.org/dev/docs/api/covers),
+links to the source edition, and keeps the placeholder when no cover exists or loading fails.
+No image files are stored locally. The catalog never calls the metadata provider on ordinary reads.
+
+Repeating the same ISBN association returns the saved edition without another external lookup.
+A new lookup is limited to one per second per application instance (`429` otherwise).
+Invalid ISBNs return `400`; unknown books/ISBNs return `404`; invalid provider responses return
+`502`; provider failures or timeouts return `503`. Failures leave the existing association intact.
+The HTTP request timeout defaults to five seconds; `open-library.timeout` and
+`open-library.base-url` can be overridden for isolated tests. Tests use local fixtures, not live APIs.
+
+Remove the association without deleting the book:
+
+```bash
+curl -i -X DELETE http://localhost:8080/books/BOOK_ID/edition \
+  -b /tmp/volumes-cookies.txt -H "X-CSRF-TOKEN: $CSRF"
+```
+
+The authenticated editing form and full ISBN metadata import are not implemented yet.
+
 ## Console
 
 ```bash

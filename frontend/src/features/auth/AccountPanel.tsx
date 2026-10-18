@@ -34,11 +34,11 @@ export function AccountPanel({ session, onSignIn, onSignOut, onRetry }: Props) {
       if (mode === 'register') {
         await register(email, password)
         setMode('login')
-        setNotice('Account created. Sign in to edit book covers.')
+        setNotice('Account created. Sign in to add books and change covers.')
       } else {
         onSignIn(await signIn(email, password))
         setOpen(false)
-        setNotice('Signed in. You can now edit book covers.')
+        setNotice('Signed in. You can now add books and change covers.')
       }
     } catch (failure) {
       const status = failure instanceof ApiError ? failure.status : 0
@@ -71,19 +71,19 @@ export function AccountPanel({ session, onSignIn, onSignOut, onRetry }: Props) {
         {session.status === 'authenticated' ? (
           <>
             <p className="min-w-0 text-muted wrap-anywhere">{session.account.email}</p>
-            <button type="button" disabled={pending} onClick={logout} className="min-h-11 font-semibold text-accent disabled:opacity-50">
+            <button type="button" disabled={pending} onClick={logout} className="min-h-11 font-semibold text-accent hover:text-foreground disabled:opacity-50">
               {pending ? 'Signing out…' : 'Sign out'}
             </button>
           </>
         ) : session.status === 'checking' ? <p className="text-muted">Checking session…</p>
           : session.status === 'error' ? (
-            <><p>Could not check your session.</p><button type="button" onClick={onRetry} className="min-h-11 font-semibold text-accent">Retry session</button></>
+            <><p>Could not check your session.</p><button type="button" onClick={onRetry} className="min-h-11 font-semibold text-accent hover:text-foreground">Retry session</button></>
           ) : (
             <>
-              <p className="text-muted">Sign in to add or change book covers.</p>
+              <p className="text-muted">Sign in to add books or change covers.</p>
               <button ref={trigger} type="button" aria-expanded={open} aria-controls="account-form" disabled={pending}
                 onClick={() => { setOpen(!open); setError(''); setNotice(''); setPassword('') }}
-                className="min-h-11 font-semibold text-accent">{open ? 'Close sign in' : 'Sign in'}</button>
+                className="min-h-11 font-semibold text-accent hover:text-foreground">{open ? 'Close sign in' : 'Sign in'}</button>
             </>
           )}
       </div>
@@ -95,24 +95,24 @@ export function AccountPanel({ session, onSignIn, onSignOut, onRetry }: Props) {
           <fieldset disabled={pending} className="mt-4 grid gap-4 disabled:opacity-60">
             <div>
               <label htmlFor="account-email" className="block font-semibold">Email</label>
-              <input id="account-email" type="email" autoComplete="username" required maxLength={254} value={email}
+              <input id="account-email" name="email" type="email" spellCheck={false} autoComplete="username" required maxLength={254} value={email}
                 onChange={(event) => setEmail(event.target.value)} className="mt-2 min-h-11 w-full border border-border bg-background px-3 text-base" />
             </div>
             <div>
               <label htmlFor="account-password" className="block font-semibold">Password</label>
-              <input id="account-password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required
+              <input id="account-password" name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required
                 minLength={mode === 'register' ? 15 : undefined} maxLength={72} value={password}
                 aria-describedby={mode === 'register' ? 'password-help' : undefined}
                 onChange={(event) => setPassword(event.target.value)} className="mt-2 min-h-11 w-full border border-border bg-background px-3 text-base" />
               {mode === 'register' && <p id="password-help" className="mt-2 text-muted">Use at least 15 characters. Accented characters and emoji count toward the 72-byte limit.</p>}
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <button type="submit" className="min-h-11 border-b-2 border-accent font-semibold text-accent">
+              <button type="submit" className="min-h-11 border-b-2 border-accent font-semibold text-accent hover:border-foreground hover:text-foreground">
                 {pending ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
               </button>
               <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setNotice(''); setPassword('') }}
-                className="min-h-11 text-muted underline underline-offset-4">{mode === 'login' ? 'Create an account' : 'I already have an account'}</button>
-              <button type="button" onClick={() => { setOpen(false); setPassword(''); trigger.current?.focus() }} className="min-h-11 text-muted">Cancel</button>
+                className="min-h-11 text-muted underline underline-offset-4 hover:text-foreground">{mode === 'login' ? 'Create an account' : 'I already have an account'}</button>
+              <button type="button" onClick={() => { setOpen(false); setPassword(''); trigger.current?.focus() }} className="min-h-11 text-muted hover:text-foreground">Cancel</button>
             </div>
           </fieldset>
         </form>

@@ -13,9 +13,18 @@
 }
 
 @layer base {
+  html {
+    /* The palette is light-only, so keep native inputs and scrollbars light too. */
+    color-scheme: light;
+  }
+
   body {
     margin: 0;
     min-width: 320px;
+  }
+
+  a, button {
+    touch-action: manipulation;
   }
 
   :focus-visible {

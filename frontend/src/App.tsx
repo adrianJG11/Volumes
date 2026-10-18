@@ -6,7 +6,7 @@ function App() {
   const { session, setSession, refresh } = useSession()
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-10 focus:bg-white focus:p-3 focus:text-accent">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-10 focus:bg-background focus:p-3 focus:text-accent">
         Skip to content
       </a>
       <header className="mx-auto max-w-6xl px-6 pt-8 sm:px-12 sm:pt-12">

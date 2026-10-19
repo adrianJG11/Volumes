@@ -24,11 +24,11 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
             pending = []
             page.route("**/books", lambda route: pending.append(route))
             page.goto(base_url)
-            expect(page.get_by_role("status")).to_have_text("Loading books…")
+            expect(page.locator('section[aria-labelledby="catalog-title"]').get_by_role("status")).to_have_text("Loading books…")
             expect(page.get_by_role("button", name="Try again")).to_have_count(0)
             for route in pending:
                 route.fulfill(json=[])
-            expect(page.get_by_role("status")).to_have_text("No books in the catalog yet.")
+            expect(page.locator('section[aria-labelledby="catalog-title"]').get_by_role("status")).to_have_text("No books in the catalog yet.")
             page.close()
             print("PASS: pending request shows loading, not an empty catalog")
 
@@ -70,7 +70,7 @@ def check_catalog(base_url, real_api=False, screenshot_dir=None):
             page = new_page()
             page.route("**/books", lambda route: route.fulfill(json=[]))
             page.goto(base_url)
-            expect(page.get_by_role("status")).to_have_text("No books in the catalog yet.")
+            expect(page.locator('section[aria-labelledby="catalog-title"]').get_by_role("status")).to_have_text("No books in the catalog yet.")
             page.unroute("**/books")
             hostile = dict(BOOKS[0], title="<script>window.catalogInjected=true</script>" + "LongTitle" * 25)
             page.route("**/books", lambda route: route.fulfill(json=[hostile]))

@@ -134,7 +134,7 @@ def temporary_database():
     def start(recreate=False):
         previous = command("ps", "--quiet", "postgres") if recreate else None
         flags = ["--force-recreate"] if recreate else []
-        command("up", "--detach", "--wait", "--wait-timeout", "60", *flags)
+        command("up", "--detach", "--wait", "--wait-timeout", "60", *flags, "postgres")
         if recreate:
             assert command("ps", "--quiet", "postgres") != previous
         address = command("port", "postgres", "5432")

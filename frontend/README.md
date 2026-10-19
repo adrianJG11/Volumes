@@ -33,7 +33,7 @@ Build runs TypeScript checks and generates production files in `dist/`. Preview 
 - `package.json`: dependencies and commands, similar to the dependency/build roles of pom.xml.
 - `tsconfig*.json`: TypeScript checking configuration.
 
-Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication uses dedicated /login and /register screens. Native links preserve browser history and reload behavior; successful login replaces the form with the personal library. Signed-out visits to / and /library redirect to /login; logout and expired sessions return to login. Production hosting must serve index.html for frontend routes while forwarding API paths to Java.
+Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication uses dedicated /login and /register screens. Native links preserve browser history and reload behavior; successful login replaces the form with the personal library. Signed-out visits to / and /library redirect to /login; logout and expired sessions return to login. The included nginx configuration serves index.html for frontend routes while forwarding API paths to Java.
 
 ## Visual direction
 
@@ -47,7 +47,7 @@ Start PostgreSQL and the Java API from the repository root as described in the m
 
 The catalog distinguishes loading, successful empty results, loaded books, and failures. Retry/refresh starts another request. Effect cleanup cancels obsolete requests, including React Strict Mode's development checks. JSON is checked at runtime because TypeScript types do not validate network responses.
 
-The proxy is development-only. Production hosting will need to route API paths to Java as well; `vite preview` is not that deployment setup.
+The Vite proxy is development-only. Docker Compose now serves the built frontend through nginx on localhost:8081, including API proxying; `vite preview` is not that deployment setup.
 
 ## Books, covers and reading status
 

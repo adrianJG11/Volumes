@@ -2,7 +2,71 @@
 
 A personal book catalog and reading library built with Java 25 and Spring Boot. Includes a REST API and a console application; the API persists its catalog in PostgreSQL, while the console keeps its own in-memory library.
 
-## Requirements
+## Run the whole app with Docker
+
+Install Docker Engine with Compose v2 (or Docker Desktop using Linux containers).
+Java, Maven, Node and nginx are built/run inside containers; they are not required on the host.
+
+1. On a fresh checkout, copy .env.example to .env and set POSTGRES_PASSWORD.
+   Keep an existing .env unchanged: changing its password does not change an existing database.
+2. Run:
+
+       docker compose up --build -d --wait
+
+3. Open http://localhost:8081. Sign in or create an account.
+
+The default project is still named volumes and uses the existing postgres_data volume.
+WEB_PORT (default 8081) and POSTGRES_PORT (default 5432) can be changed in .env if occupied.
+Both published ports bind to local loopback; Java has no published host port.
+This is a local HTTP deployment. HTTPS, public access and Rocky Linux operation are the next phase.
+
+Browser → nginx web:8080 → Java api:8080 → postgres:5432
+
+nginx serves the compiled React files and proxies /auth, /books and /me to Java.
+Direct /login, /register and /library URLs return the React entry point. Cookies and CSRF remain
+same-origin. Docker service names resolve inside the Compose network; localhost inside a
+container refers to that container, not the host or PostgreSQL.
+
+The backend Dockerfile builds with Maven/JDK 25 and copies the JAR into a JRE 25 runtime.
+The frontend builds with Node 24 and copies dist into nginx. Both runtime processes use
+non-root users. Build contexts exclude local .env files and generated build directories.
+Image tags track compatible major/runtime releases; refresh base images explicitly with
+docker compose build --pull before deploying an update.
+
+Useful commands:
+
+    docker compose ps
+    docker compose logs -f api web
+    docker compose stop
+    docker compose up -d --wait
+    docker compose up --build -d --wait
+
+stop preserves containers and data; down removes containers/network but preserves the volume.
+Do not use down --volumes for your real library unless you intend to erase its database.
+Database data persists, but the in-memory login sessions expire when Java restarts.
+A source edit needs an image rebuild; this setup does not use Vite hot reload.
+
+Compose waits for PostgreSQL readiness before starting Java, then for Java before nginx.
+The Java probe checks the anonymous /auth/me response without creating sessions or loading
+the catalog; it is a liveness/startup check, not continuous database monitoring.
+The nginx probe checks its own HTTP server. Services restart unless explicitly stopped;
+an unhealthy status alone does not restart a running process.
+
+### Verify the containerized deployment
+
+    python3 scripts/smoke_containers.py
+
+This builds and starts a uniquely named disposable Compose project with random localhost ports
+and a random test database password. It checks built web assets, deep links, session cookies,
+CSRF, library ownership and ratings through nginx. It then recreates PostgreSQL and Java,
+verifies saved data and expired sessions, and checks nginx reconnects to the replacement API.
+Only that temporary project's containers and volume are removed. Use --no-build after building
+images locally. Add --browser with the existing Playwright environment to check real browser login through nginx; CI does this too. Python is needed for this test helper, not to run the app.
+
+CI runs this check after Java/frontend/browser validation. A Docker image build skips integration
+tests because they require a Docker daemon; CI runs those tests before building the images.
+
+## Requirements for development without app containers
 
 - JDK 25
 - Maven
@@ -17,7 +81,7 @@ On a fresh checkout, copy `.env.example` to `.env` and set a local `POSTGRES_PAS
 ```bash
 cp .env.example .env
 # Edit .env and fill in POSTGRES_PASSWORD before starting.
-docker compose up -d --wait
+docker compose up -d --wait postgres
 docker compose ps
 docker compose exec postgres psql -U volumes -d volumes -c 'SELECT current_database(), current_user;'
 ```
@@ -28,7 +92,7 @@ PostgreSQL is available on `127.0.0.1:5432`. If that port is occupied, change `P
 
 ```bash
 docker compose stop          # Stop the database; keep its container and data.
-docker compose up -d --wait  # Start it again.
+docker compose up -d --wait postgres  # Start it again.
 docker compose down          # Remove this project's containers/network; keep data.
 ```
 
@@ -37,7 +101,7 @@ Do not add `--volumes` (`-v`) to `down` unless you intend to erase the local dat
 ## API
 
 ```bash
-docker compose up -d --wait
+docker compose up -d --wait postgres
 mvn spring-boot:run
 ```
 

@@ -24,13 +24,13 @@ export function EditionEditor({ book, onUpdated, onSessionChanged }: Props) {
         : await saveEdition(book.id, isbn.trim())
       onUpdated(updated)
       setIsbn(updated.edition?.isbn ?? '')
-      setNotice(remove ? 'ISBN and cover removed. The book is still in the catalog.'
+      setNotice(remove ? 'ISBN and cover removed. The book is still in your library.'
         : updated.edition?.coverUrl ? 'Edition saved. The cover has been updated.'
         : 'Edition saved. No cover was found for this edition.')
     } catch (failure) {
       const status = failure instanceof ApiError ? failure.status : 0
       setError(status === 400 ? 'Enter a valid ISBN-10 or ISBN-13. Spaces and hyphens are allowed.'
-        : status === 404 ? 'This book is no longer in the catalog. Refresh the page.'
+        : status === 404 ? 'This book is no longer available. Refresh the page.'
         : status === 429 ? 'Please wait a second before another ISBN lookup.'
         : status === 401 || status === 403 ? 'Your session has changed. Sign in again if needed, then retry.'
         : status === 502 || status === 503 ? 'Book services are unavailable right now. Try again later; your saved edition has not changed.'
@@ -56,7 +56,7 @@ export function EditionEditor({ book, onUpdated, onSessionChanged }: Props) {
         <form id={`edition-form-${book.id}`} onSubmit={submit} className="max-w-lg border-t border-border pt-4">
           <fieldset disabled={pending !== null} className="disabled:opacity-60">
             <label htmlFor={inputId} className="block font-semibold">Edition ISBN</label>
-            <p id={`${inputId}-help`} className="mt-2 leading-6 text-muted">Use the ISBN printed on your edition. This changes the cover association in the shared catalog, not the title or author.</p>
+            <p id={`${inputId}-help`} className="mt-2 leading-6 text-muted">Use the ISBN printed on your edition. This updates the edition cover without changing the title or author.</p>
             <input id={inputId} name="isbn" type="text" required maxLength={32} autoComplete="off" spellCheck={false}
               aria-describedby={`${inputId}-help${error ? ` ${inputId}-error` : ''}`} aria-invalid={error ? true : undefined}
               value={isbn} onChange={(event) => { setIsbn(event.target.value); setError(''); setNotice('') }}

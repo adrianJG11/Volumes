@@ -1,6 +1,6 @@
 # Volumes frontend
 
-React + TypeScript + Vite, styled with Tailwind CSS v4. The catalog reads real books from the Java API. Registration, session login/logout, book creation and ISBN editing are available. Dedicated authentication screens are tracked in issue #17; personal-library ratings in #18.
+React + TypeScript + Vite, styled with Tailwind CSS v4. The app opens with sign-in, then shows only the signed-in reader’s personal library. Readers search for a book, choose an edition/cover, and add it directly with a reading status. Existing sessions open the library immediately. The shared catalog remains an API implementation detail.
 
 ## Run in WSL
 
@@ -33,7 +33,7 @@ Build runs TypeScript checks and generates production files in `dist/`. Preview 
 - `package.json`: dependencies and commands, similar to the dependency/build roles of pom.xml.
 - `tsconfig*.json`: TypeScript checking configuration.
 
-Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication currently uses an inline panel; issue #17 moves it onto dedicated screens.
+Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication uses dedicated /login and /register screens. Native links preserve browser history and reload behavior; successful login replaces the form with the personal library. Signed-out visits to / and /library redirect to /login; logout and expired sessions return to login. The included nginx configuration serves index.html for frontend routes while forwarding API paths to Java.
 
 ## Visual direction
 
@@ -47,21 +47,20 @@ Start PostgreSQL and the Java API from the repository root as described in the m
 
 The catalog distinguishes loading, successful empty results, loaded books, and failures. Retry/refresh starts another request. Effect cleanup cancels obsolete requests, including React Strict Mode's development checks. JSON is checked at runtime because TypeScript types do not validate network responses.
 
-The proxy is development-only. Production hosting will need to route API paths to Java as well; `vite preview` is not that deployment setup.
+The Vite proxy is development-only. Docker Compose now serves the built frontend through nginx on localhost:8081, including API proxying; `vite preview` is not that deployment setup.
 
-## Catalog browser checks
+## Books, covers and reading status
 
-With Vite running, execute the Playwright helper from WSL:
+Use **Add a book** in your library. Search suggestions prefill editable title, author, genre,
+page count and ISBN. Choose **Want to read**, **Reading** or **Finished**, then add the book.
+Java stores the shared book record and the frontend links it to the signed-in reader through
+the existing personal-library API. A failed library/status request keeps the created book ID
+in the form so retrying does not create another shared book. A cover lookup failure keeps the
+book available and can be retried using its ISBN editor.
 
-```bash
-"$(uv tool dir)/playwright/bin/python" tests/catalog_browser.py
-```
-
-The deterministic checks intercept browser requests to exercise loading, loaded/empty catalogs, HTTP/network errors, malformed responses, recovery, narrow layouts, and escaped book titles. They do not write to a backend. Optional `--real-api` also verifies a nonempty running Java catalog through the real proxy. Use a seeded disposable test database for that integration check. `--screenshots /tmp/catalog-check` saves desktop/mobile images.
-
-## Edition covers
-
-The catalog reads optional edition metadata from Java. It renders uncropped Open Library or iTunes images in a fixed 2:3 area, with an Open Library edition link when available and a fallback for missing images. Signed-in readers can add, change or remove an ISBN using the editor below each book. The add-book form can prefill fields from title search and attach an optional ISBN. A missing cover can be looked up again by saving the same ISBN. Session, catalog and ISBN browser checks run in CI alongside the Java checks.
+Library rows show the cover, personal reading status and rating. Status changes use PATCH
+/me/library/{bookId}; personal ratings still use the existing rating endpoints. Account ownership
+always comes from the Java session. The public catalog has no separate screen or navigation item.
 
 ## Complete browser verification
 
@@ -76,10 +75,19 @@ Use the Playwright version pinned in `frontend/tests/requirements.txt`. The runn
 PostgreSQL database, packaged Java API and Vite server on temporary ports, then cleans up only those
 resources. Provider responses come from a local HTTP fixture; neither CI nor these tests call live
 Open Library or iTunes. Chromium tests exercise registration, duplicate-email/wrong-password errors,
-pending controls, cookie-session reload, fresh CSRF tokens, creating a book, ISBN save/removal,
+pending controls, cookie-session reload, fresh CSRF tokens, searching/adding a book directly to the library, reading statuses, ISBN cover/removal,
 logout and session loss. CI installs the pinned browser runtime, runs npm lint/build and invokes the
 same runner; a local pass is separate from the GitHub Actions result on the PR.
 
 ## Testing approach
 
 Prefer API integration tests with disposable PostgreSQL and a few browser journeys for user-visible behavior. Keep isolated unit tests only for meaningful pure logic, such as ISBN validation. Avoid repeating every validation case through the browser or adding tests that mirror implementation details. External book providers use local fixtures in automated tests.
+
+## Personal library
+
+The home screen (/) and legacy /library URL show the same personal library after login.
+Readers can save a rating from 1 to 5 or clear it. Saved values change only after Java confirms
+success. Clearing a rating preserves the entry and shared book. Reading status and rating belong
+to each reader independently. Private entries unmount on logout/session refresh and are keyed by
+account identity. Browser checks use two accounts to verify independent statuses and ratings,
+reloading, failed-save recovery and session expiry.

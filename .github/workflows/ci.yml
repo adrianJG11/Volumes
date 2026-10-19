@@ -18,7 +18,7 @@ jobs:
   build:
     name: Build and smoke test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -69,3 +69,9 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
           PYTHONUNBUFFERED: '1'
         run: '"$RUNNER_TEMP/volumes-browser/bin/python" frontend/tests/run_browser.py'
+
+      - name: Verify containerized stack and persistence
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONUNBUFFERED: '1'
+        run: '"$RUNNER_TEMP/volumes-browser/bin/python" scripts/smoke_containers.py --browser'

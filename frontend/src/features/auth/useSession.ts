@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { currentAccount, type Account } from './api'
 
 export type Session =
@@ -19,9 +19,15 @@ export function useSession() {
     return () => controller.abort()
   }, [attempt])
 
-  function refresh() {
+  const refresh = useCallback(() => {
     setSession({ status: 'checking' })
     setAttempt((value) => value + 1)
-  }
+  }, [])
+  useEffect(() => {
+    // Back/Forward may restore a document from the browser cache after another tab signed out.
+    const restored = (event: PageTransitionEvent) => { if (event.persisted) refresh() }
+    window.addEventListener('pageshow', restored)
+    return () => window.removeEventListener('pageshow', restored)
+  }, [refresh])
   return { session, setSession, refresh }
 }

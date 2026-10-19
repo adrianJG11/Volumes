@@ -3,6 +3,7 @@ name: volumes
 services:
   postgres:
     image: postgres:18
+    restart: unless-stopped
     environment:
       POSTGRES_DB: volumes
       POSTGRES_USER: volumes
@@ -17,6 +18,28 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  api:
+    image: volumes-api:local
+    build: .
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/volumes
+      SPRING_DATASOURCE_USERNAME: volumes
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: volumes-web:local
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8081}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from smoke_api import temporary_database, running_api
 from catalog_browser import check_catalog
 from auth_browser import check_auth
+from library_browser import check_library
 
 
 class Provider(BaseHTTPRequestHandler):
@@ -76,6 +77,7 @@ def main():
             with running_api(environment) as api_url, vite(api_url) as frontend_url:
                 check_catalog(frontend_url)
                 check_auth(frontend_url)
+                check_library(frontend_url)
     finally:
         provider.shutdown()
         provider.server_close()

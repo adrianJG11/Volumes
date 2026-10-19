@@ -42,7 +42,7 @@ export function AuthScreen({ mode }: { mode: 'login' | 'register' }) {
   return (
     <section className="max-w-md">
       {mode === 'login' && new URLSearchParams(window.location.search).has('registered') &&
-        <p role="status" className="mt-4 text-muted">Account created. Sign in to add books and change covers.</p>}
+        <p role="status" className="mt-4 text-muted">Account created. Sign in to start your library.</p>}
       {error && <p role="alert" className="mt-4 text-accent">{error}</p>}
         <form id="account-form" onSubmit={submit} className="max-w-md py-4">
 
@@ -66,7 +66,6 @@ export function AuthScreen({ mode }: { mode: 'login' | 'register' }) {
               </button>
 
               <a href={mode === 'login' ? '/register' : '/login'} className="inline-flex min-h-11 items-center text-muted underline underline-offset-4">{mode === 'login' ? 'Create an account' : 'I already have an account'}</a>
-              <a href="/" className="inline-flex min-h-11 items-center text-muted">Cancel</a>
             </div>
           </fieldset>
         </form>

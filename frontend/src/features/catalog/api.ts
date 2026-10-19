@@ -38,7 +38,7 @@ export type Book = {
   edition?: BookEdition | null
 }
 
-function isBook(value: unknown): value is Book {
+export function isBook(value: unknown): value is Book {
   if (typeof value !== 'object' || value === null) return false
   const book = value as Record<string, unknown>
   return typeof book.id === 'string' && typeof book.title === 'string'

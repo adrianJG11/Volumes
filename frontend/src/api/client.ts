@@ -24,7 +24,7 @@ export async function getJson(path: string, signal?: AbortSignal, timeoutMs?: nu
   return (await request(path, { signal }, timeoutMs)).json()
 }
 
-export async function mutate(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<unknown> {
+export async function mutate(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<unknown> {
   // Fetch a fresh token for each action, including after login rotates the session.
   const csrf = await getJson('/auth/csrf')
   if (typeof csrf !== 'object' || csrf === null || !('token' in csrf)

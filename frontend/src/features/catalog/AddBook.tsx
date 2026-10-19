@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { addToLibrary, saveStatus, statuses, type ReadingStatus } from '../library/api'
 import { ApiError } from '../../api/client'
 import { createBook, saveEdition, searchBooks, type Book, type BookSuggestion } from './api'
 
@@ -33,6 +34,8 @@ async function retryOnRateLimit<T>(action: () => Promise<T>, signal?: AbortSigna
 export function AddBook({ onAdded, onSessionChanged }: Props) {
   const [open, setOpen] = useState(false)
   const [fields, setFields] = useState(EMPTY)
+  const [readingStatus, setReadingStatus] = useState<ReadingStatus>('PENDING')
+  const [created, setCreated] = useState<Book | null>(null)
   const [picked, setPicked] = useState(false)
   const [search, setSearch] = useState<Search>({ status: 'idle' })
   const [pending, setPending] = useState(false)
@@ -84,6 +87,8 @@ export function AddBook({ onAdded, onSessionChanged }: Props) {
 
   function close() {
     setOpen(false)
+    setCreated(null)
+    setReadingStatus('PENDING')
     setFields(EMPTY)
     setPicked(false)
     setSearch({ status: 'idle' })
@@ -104,7 +109,7 @@ export function AddBook({ onAdded, onSessionChanged }: Props) {
     setNotice('')
     let book: Book
     try {
-      book = await createBook({ title: fields.title.trim(), author: fields.author.trim(), genre: fields.genre.trim(), pages })
+      book = created ?? await createBook({ title: fields.title.trim(), author: fields.author.trim(), genre: fields.genre.trim(), pages })
     } catch (failure) {
       const status = failure instanceof ApiError ? failure.status : 0
       if (status === 401 || status === 403) onSessionChanged()
@@ -114,7 +119,8 @@ export function AddBook({ onAdded, onSessionChanged }: Props) {
       setPending(false)
       return
     }
-    let message = `“${book.title}” was added to the catalog.`
+    setCreated(book)
+    let message = `“${book.title}” was added to your library.`
     const isbn = fields.isbn.trim()
     if (isbn) {
       try {
@@ -123,6 +129,19 @@ export function AddBook({ onAdded, onSessionChanged }: Props) {
       } catch {
         message += ' The ISBN could not be attached; use “Add ISBN” on the book to try again.'
       }
+    }
+    try {
+      try { await addToLibrary(book.id) }
+      catch (failure) {
+        if (!(failure instanceof ApiError && failure.status === 409)) throw failure
+      }
+      await saveStatus(book.id, readingStatus)
+    } catch (failure) {
+      setCreated(book)
+      setPending(false)
+      if (failure instanceof ApiError && [401, 403].includes(failure.status)) onSessionChanged()
+      setError('Could not finish adding this book with your reading status. Retry to continue with the same book.')
+      return
     }
     onAdded(book)
     setNotice(message)
@@ -147,7 +166,7 @@ export function AddBook({ onAdded, onSessionChanged }: Props) {
               <label htmlFor="new-book-title" className="block font-semibold">Title</label>
               <input id="new-book-title" name="title" type="text" placeholder="Start typing a title…" required maxLength={300} autoComplete="off" autoFocus
                 aria-describedby="new-book-matches" value={fields.title}
-                onChange={(event) => update('title', event.target.value)} className={field} />
+                disabled={created !== null} onChange={(event) => update('title', event.target.value)} className={field} />
               <div id="new-book-matches" aria-live="polite">
                 {search.status === 'searching' && <p className="mt-2 text-muted">Searching…</p>}
                 {search.status === 'error' && <p className="mt-2 text-muted">{search.message}</p>}
@@ -181,28 +200,34 @@ export function AddBook({ onAdded, onSessionChanged }: Props) {
             <div>
               <label htmlFor="new-book-author" className="block font-semibold">Author</label>
               <input id="new-book-author" name="author" type="text" autoComplete="off" required maxLength={300} value={fields.author}
-                onChange={(event) => update('author', event.target.value)} className={field} />
+                disabled={created !== null} onChange={(event) => update('author', event.target.value)} className={field} />
             </div>
             <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
               <div>
                 <label htmlFor="new-book-genre" className="block font-semibold">Genre</label>
                 <input id="new-book-genre" name="genre" type="text" autoComplete="off" required maxLength={100} value={fields.genre}
-                  onChange={(event) => update('genre', event.target.value)} className={field} />
+                  disabled={created !== null} onChange={(event) => update('genre', event.target.value)} className={field} />
               </div>
               <div>
                 <label htmlFor="new-book-pages" className="block font-semibold">Pages</label>
                 <input id="new-book-pages" name="pages" type="number" autoComplete="off" required min={1} step={1} inputMode="numeric" value={fields.pages}
-                  onChange={(event) => update('pages', event.target.value)} className={`${field} tabular-nums`} />
+                  disabled={created !== null} onChange={(event) => update('pages', event.target.value)} className={`${field} tabular-nums`} />
               </div>
             </div>
             <div>
               <label htmlFor="new-book-isbn" className="block font-semibold">ISBN <span className="font-normal text-muted">(optional, adds the cover)</span></label>
               <input id="new-book-isbn" name="isbn" type="text" maxLength={32} autoComplete="off" spellCheck={false} value={fields.isbn}
-                onChange={(event) => update('isbn', event.target.value)} className={field} />
+                disabled={created !== null} onChange={(event) => update('isbn', event.target.value)} className={field} />
+            </div>
+            <div>
+              <label htmlFor="new-book-status" className="block font-semibold">Reading status</label>
+              <select id="new-book-status" value={readingStatus} onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)} className={field}>
+                {Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <button type="submit" className="min-h-11 border-b-2 border-accent font-semibold text-accent hover:border-foreground hover:text-foreground">
-                {pending ? 'Adding…' : 'Add to catalog'}
+                {pending ? 'Adding…' : created ? 'Retry adding to library' : 'Add to my library'}
               </button>
               <button type="button" onClick={close} className="min-h-11 text-muted hover:text-foreground">Cancel</button>
             </div>

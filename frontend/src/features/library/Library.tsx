@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { AddBook } from '../catalog/AddBook'
 import { BookCover } from '../catalog/BookCover'
@@ -91,6 +91,8 @@ function Reading({ entry, onSaved, onSessionChanged }: { entry: Entry; onSaved: 
 }
 
 export function Library({ onSessionChanged }: { onSessionChanged: () => void }) {
+  const [page, setPage] = useState(1)
+  const summary = useRef<HTMLParagraphElement>(null)
   const [entries, setEntries] = useState<Entry[] | null>(null)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -109,14 +111,26 @@ export function Library({ onSessionChanged }: { onSessionChanged: () => void }) 
   function saved(entry: Entry) {
     setEntries((items) => items?.map((item) => item.bookId === entry.bookId ? entry : item) ?? null)
   }
+  const pageCount = Math.max(1, Math.ceil((entries?.length ?? 0) / 10))
+  const currentPage = Math.min(page, pageCount)
+  const offset = (currentPage - 1) * 10
+  function changePage(next: number) {
+    setPage(next)
+    summary.current?.focus()
+    summary.current?.scrollIntoView({ block: 'start' })
+  }
   return <section aria-label="Your books" className="mt-8">
-    <AddBook onAdded={() => { setError(false); setAttempt((value) => value + 1) }} onSessionChanged={onSessionChanged} />
+    <AddBook onAdded={() => { setError(false); setPage(Math.floor((entries?.length ?? 0) / 10) + 1); setAttempt((value) => value + 1) }} onSessionChanged={onSessionChanged} />
     {error ? <div>
       <p role="alert">Could not load your library.</p>
       <button type="button" onClick={() => { setError(false); setAttempt((value) => value + 1) }} className="min-h-11 text-accent underline">Retry library</button>
     </div> : entries === null ? <p role="status">Loading your library…</p>
       : entries.length === 0 ? <p className="py-8 text-muted">Your library is empty. Add your first book above.</p>
-      : <ul className="divide-y divide-border">{entries.map((entry) => <li key={entry.bookId} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 py-7 sm:gap-x-8">
+      : <>
+      <p ref={summary} tabIndex={-1} aria-live="polite" className="pt-5 text-sm text-muted tabular-nums focus:outline-none">
+        {offset + 1}–{Math.min(offset + 10, entries.length)} of {entries.length} books
+      </p>
+      <ul className="divide-y divide-border">{entries.slice(offset, offset + 10).map((entry) => <li key={entry.bookId} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 py-7 sm:gap-x-8">
         <BookCover key={entry.edition?.coverUrl ?? 'missing'} url={entry.edition?.coverUrl} />
         <div className="min-w-0">
           <h2 className="font-serif text-2xl wrap-anywhere">{entry.title}</h2>
@@ -128,6 +142,14 @@ export function Library({ onSessionChanged }: { onSessionChanged: () => void }) 
           <Rating entry={entry} onSaved={saved} onSessionChanged={onSessionChanged} />
         </div>
         <EditionEditor book={{ ...entry, id: entry.bookId }} onUpdated={(book) => saved({ ...entry, ...book })} onSessionChanged={onSessionChanged} />
-      </li>)}</ul>}
+      </li>)}</ul>
+      {pageCount > 1 && <nav aria-label="Library pagination" className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-5 text-sm">
+        <button type="button" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}
+          className="min-h-11 px-2 font-semibold text-accent hover:text-foreground disabled:cursor-default disabled:opacity-40">← Previous</button>
+        <span className="text-muted tabular-nums">Page {currentPage} of {pageCount}</span>
+        <button type="button" disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}
+          className="min-h-11 px-2 font-semibold text-accent hover:text-foreground disabled:cursor-default disabled:opacity-40">Next →</button>
+      </nav>}
+      </>}
   </section>
 }

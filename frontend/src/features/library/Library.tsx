@@ -7,6 +7,7 @@ import { clearRating, getLibrary, saveRating, saveStatus, statuses, type Reading
 
 function Rating({ entry, onSaved, onSessionChanged }: { entry: Entry; onSaved: (entry: Entry) => void; onSessionChanged: () => void }) {
   const [draft, setDraft] = useState(entry.rating?.toString() ?? '')
+  const [hovered, setHovered] = useState(0)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -32,24 +33,37 @@ function Rating({ entry, onSaved, onSessionChanged }: { entry: Entry; onSaved: (
     } finally { setPending(false) }
   }
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void change(false) }
-  return <form onSubmit={submit} className="mt-4">
-    <p className="text-sm text-muted">Saved rating: {entry.rating === null ? 'Not rated' : entry.rating + ' / 5'}</p>
-    <fieldset disabled={pending} className="mt-3 flex flex-wrap items-end gap-4 disabled:opacity-50">
-      <div>
-        <label htmlFor={'rating-' + entry.bookId} className="block text-sm font-semibold">Your rating for {entry.title}</label>
-        <select id={'rating-' + entry.bookId} value={draft} required onChange={(event) => setDraft(event.target.value)}
-          className="mt-2 min-h-11 border border-border bg-background px-3">
-          <option value="" disabled>Choose a rating</option>
-          {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} / 5</option>)}
-        </select>
+  return <form onSubmit={submit} className="mt-5">
+    <fieldset disabled={pending} className="disabled:opacity-50">
+      <legend className="text-sm font-semibold">Your rating<span className="sr-only"> for {entry.title}</span></legend>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3">
+        <div className="flex" onMouseLeave={() => setHovered(0)}>
+          {[1, 2, 3, 4, 5].map((value) => <label key={value} className="relative flex size-11 cursor-pointer items-center justify-center" onMouseEnter={() => setHovered(value)}>
+            <input type="radio" name={'rating-' + entry.bookId} value={value} checked={draft === String(value)}
+              onChange={() => { setDraft(String(value)); setNotice(''); setError('') }}
+              aria-label={value + (value === 1 ? ' star' : ' stars')}
+              className="peer absolute inset-0 size-full cursor-pointer opacity-0" />
+            <svg viewBox="0 0 24 24" aria-hidden="true"
+              className={'size-8 rounded-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-accent ' + (value <= (hovered || Number(draft)) ? 'text-accent' : 'text-muted')}
+              fill={value <= (hovered || Number(draft)) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+              <path d="m12 2.5 2.93 5.94 6.56.95-4.75 4.63 1.12 6.54L12 17.47l-5.86 3.09 1.12-6.54L2.51 9.39l6.56-.95Z" />
+            </svg>
+          </label>)}
+        </div>
+        <span className="text-sm text-muted tabular-nums">{draft ? draft + ' / 5' : 'Not rated'}</span>
       </div>
-      <button type="submit" disabled={!draft} className="min-h-11 font-semibold text-accent disabled:opacity-50">{pending ? 'Saving…' : 'Save rating'}</button>
-      <button type="button" disabled={entry.rating === null} onClick={() => void change(true)}
-        className="min-h-11 text-muted underline disabled:opacity-50">Clear rating</button>
+      <div className="flex flex-wrap items-center gap-x-5">
+        {draft && Number(draft) !== entry.rating && <button type="submit" className="min-h-11 font-semibold text-accent hover:text-foreground">{pending ? 'Saving…' : 'Save rating'}</button>}
+        {entry.rating !== null && <button type="button" onClick={() => void change(true)}
+          className="min-h-11 text-sm text-muted underline underline-offset-4 hover:text-accent">Clear rating</button>}
+      </div>
     </fieldset>
-    {notice && <p role="status" className="mt-2 text-sm text-muted">{notice}</p>}
+    <p className="sr-only">Saved rating: {entry.rating === null ? 'Not rated' : entry.rating + ' / 5'}</p>
+    {draft && Number(draft) !== entry.rating && <p className="text-xs text-muted">Unsaved rating</p>}
+    {notice && <p role="status" className="mt-1 text-sm text-muted">{notice}</p>}
     {error && <p role="alert" className="mt-2 text-sm text-accent">{error}</p>}
   </form>
+
 }
 
 function Reading({ entry, onSaved, onSessionChanged }: { entry: Entry; onSaved: (entry: Entry) => void; onSessionChanged: () => void }) {
@@ -65,7 +79,7 @@ function Reading({ entry, onSaved, onSessionChanged }: { entry: Entry; onSaved: 
     } finally { setPending(false) }
   }
   return <div className="mt-4">
-    <label htmlFor={'status-' + entry.bookId} className="block text-sm font-semibold">Reading status for {entry.title}</label>
+    <label htmlFor={'status-' + entry.bookId} className="block text-sm font-semibold">Reading status<span className="sr-only"> for {entry.title}</span></label>
     <select id={'status-' + entry.bookId} disabled={pending} value={entry.status}
       onChange={(event) => void change(event.target.value as ReadingStatus)}
       className="mt-2 min-h-11 border border-border bg-background px-3 disabled:opacity-50">
@@ -108,6 +122,8 @@ export function Library({ onSessionChanged }: { onSessionChanged: () => void }) 
           <h2 className="font-serif text-2xl wrap-anywhere">{entry.title}</h2>
           <p className="mt-2 text-muted wrap-anywhere">{entry.author}</p>
           <p className="mt-2 text-sm text-muted">{entry.genre} · {entry.pages} pages</p>
+        </div>
+        <div className="col-span-2 sm:col-span-1 sm:col-start-2">
           <Reading entry={entry} onSaved={saved} onSessionChanged={onSessionChanged} />
           <Rating entry={entry} onSaved={saved} onSessionChanged={onSessionChanged} />
         </div>

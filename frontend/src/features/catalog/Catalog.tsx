@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AddToLibrary } from '../library/AddToLibrary'
 import { AddBook } from './AddBook'
 import { EditionEditor } from './EditionEditor'
 import { BookCover } from './BookCover'
@@ -98,6 +99,7 @@ export function Catalog({ accountId, onSessionChanged }: { accountId?: string; o
                   <div><dt className="sr-only">Length</dt><dd className="tabular-nums">{pageCount.format(book.pages)} pages</dd></div>
                 </dl>
               </div>
+              {accountId && <AddToLibrary key={'library-' + accountId} bookId={book.id} title={book.title} onSessionChanged={onSessionChanged} />}
               {accountId && <EditionEditor key={accountId} book={book} onUpdated={updateBook} onSessionChanged={onSessionChanged} />}
             </li>
           ))}

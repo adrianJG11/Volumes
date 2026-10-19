@@ -1,6 +1,6 @@
 # Volumes frontend
 
-React + TypeScript + Vite, styled with Tailwind CSS v4. The catalog reads real books from the Java API. Registration, session login/logout, book creation and ISBN editing are available. Dedicated authentication screens are tracked in issue #17; personal-library ratings in #18.
+React + TypeScript + Vite, styled with Tailwind CSS v4. The catalog reads real books from the Java API. Registration, session login/logout, book creation and ISBN editing are available. Dedicated /login and /register screens use normal browser navigation; the /library screen supports personal ratings.
 
 ## Run in WSL
 
@@ -33,7 +33,7 @@ Build runs TypeScript checks and generates production files in `dist/`. Preview 
 - `package.json`: dependencies and commands, similar to the dependency/build roles of pom.xml.
 - `tsconfig*.json`: TypeScript checking configuration.
 
-Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication currently uses an inline panel; issue #17 moves it onto dedicated screens.
+Auth and catalog code live in `src/features/auth/` and `src/features/catalog/`. The shared API client handles requests, HTTP errors, timeouts and fresh CSRF tokens for mutations. Authentication uses dedicated /login and /register screens. Native links preserve browser history and reload behavior; successful login replaces the form with the catalog. Production hosting must serve index.html for frontend routes while forwarding API paths to Java.
 
 ## Visual direction
 
@@ -83,3 +83,11 @@ same runner; a local pass is separate from the GitHub Actions result on the PR.
 ## Testing approach
 
 Prefer API integration tests with disposable PostgreSQL and a few browser journeys for user-visible behavior. Keep isolated unit tests only for meaningful pure logic, such as ISBN validation. Avoid repeating every validation case through the browser or adding tests that mirror implementation details. External book providers use local fixtures in automated tests.
+
+## Personal library
+Signed-in readers can add catalog books to My library, then save a rating from 1 to 5 or clear it.
+The saved value changes only after Java confirms success. Clearing a rating keeps both the personal
+entry and shared book. Duplicate additions are treated as already in the library.
+Private entries unmount on logout/session refresh and are keyed by account identity.
+The browser suite uses two separate accounts to check independent ratings, edits, clearing,
+reloads, duplicate additions, failure recovery and session expiry.

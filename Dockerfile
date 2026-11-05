@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn --batch-mode --no-transfer-progress 
 
 FROM eclipse-temurin:25-jre-noble AS runtime
 WORKDIR /app
-COPY --from=build --chown=10001:10001 /build/target/volumes-0.1.0-SNAPSHOT.jar app.jar
+COPY --from=build --chown=10001:10001 /build/target/volumes-0.1.0.jar app.jar
 COPY --from=build --chown=10001:10001 /health/Healthcheck.class /health/Healthcheck.class
 USER 10001:10001
 EXPOSE 8080

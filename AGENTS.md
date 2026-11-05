@@ -24,7 +24,7 @@
 ## Verificación
 - Docker debe estar activo. Inicia PostgreSQL local con `docker compose up -d --wait`; configura `.env` siguiendo README. No muestres sus credenciales.
 - Los tests de catálogo, esquema y HTTP usan el perfil test con PostgreSQL desechable de Testcontainers; nunca deben usar la base de desarrollo.
-- API: `mvn spring-boot:run`; empaquetado: `mvn verify` y `java -jar target/volumes-0.1.0-SNAPSHOT.jar`.
+- API: `mvn spring-boot:run`; empaquetado: `mvn verify` y `java -jar target/volumes-0.1.0.jar`.
 - Smoke HTTP: `python3 scripts/smoke_api.py`, tras empaquetar. Usa PostgreSQL desechable y un puerto local temporal; verifica cuentas, catálogo y bibliotecas personales tras reiniciar la API y recrear PostgreSQL conservando el volumen; las sesiones no sobreviven al reinicio. Usa compose.yaml con un nombre de proyecto único y elimina solo los recursos de ese proyecto temporal al terminar.
 - Para cambios Java, desde la raíz: `mvn compile`.
 - Prueba de consola: `java -cp target/classes com.adrian.volumes.Main`.

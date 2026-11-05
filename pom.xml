@@ -13,7 +13,7 @@
 
     <groupId>com.adrian</groupId>
     <artifactId>volumes</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>Volumes</name>
     <description>Personal book catalog and reading library</description>
 

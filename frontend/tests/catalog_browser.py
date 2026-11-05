@@ -8,9 +8,18 @@ def check_catalog(url):
             page=browser.new_page()
             page.route('**/auth/me', lambda route: route.fulfill(json={'id':'reader', 'email':'reader@example.com'}))
             held=[]
-            page.route('**/me/library', lambda route: held.append(route))
+            release_failure = False
+            def library_response(route):
+                # The loading UI may render before the request is intercepted.
+                # Also handle late requests from React StrictMode's effect replay.
+                if release_failure:
+                    route.fulfill(status=503, json={})
+                else:
+                    held.append(route)
+            page.route('**/me/library', library_response)
             page.goto(url)
             expect(page.get_by_text('Loading your library…')).to_be_visible()
+            release_failure = True
             for route in held:
                 route.fulfill(status=503, json={})
             expect(page.get_by_role('alert')).to_have_text('Could not load your library.')

@@ -2,6 +2,36 @@
 
 A personal book catalog and reading library built with Java 25 and Spring Boot. Includes a REST API and a console application; the API persists its catalog in PostgreSQL, while the console keeps its own in-memory library.
 
+## Project status — v0.1.0
+
+The book-library MVP is released and development is paused as of 2026-11-05.
+This release preserves the working application; ML/DL is deferred until the project resumes.
+
+### Available features
+
+- React interface for registration, login, catalog browsing and personal libraries.
+- Shared book catalog with editable metadata, Open Library search and ISBN covers.
+- Private reading lists with pending, reading and finished statuses and 1–5 star ratings.
+- Spring Security sessions and CSRF protection; PostgreSQL persistence with Flyway migrations.
+- Docker Compose stack with nginx, API and database; automated API, browser and persistence checks.
+- Independent Java console application for an in-memory library.
+
+### Scope and limitations
+
+The documented Compose setup is for local HTTP use. Public deployment hardening, email
+verification, password recovery and backup/restore automation are outside this release.
+Sessions expire on API restart; persisted books, accounts and reading lists remain.
+Catalog metadata is collaborative and can be edited by any signed-in user.
+
+The [Python corpus pilot](recommender/README.md) is saved for future work. It is an
+isolated TF-IDF experiment, not an integrated recommendation feature or a validated
+ML/DL model. Its cached provider data stays local and is excluded from Git.
+See the [resume checklist](recommender/README.md#next-acceptance-criteria) and
+[issue #21](https://github.com/adrianJG11/Volumes/issues/21) for deferred work.
+
+See [CHANGELOG.md](CHANGELOG.md) for release scope and [CONTRIBUTING.md](CONTRIBUTING.md)
+for the contribution and validation workflow.
+
 ## Run the whole app with Docker
 
 Install Docker Engine with Compose v2 (or Docker Desktop using Linux containers).
@@ -18,7 +48,7 @@ Java, Maven, Node and nginx are built/run inside containers; they are not requir
 The default project is still named volumes and uses the existing postgres_data volume.
 WEB_PORT (default 8081) and POSTGRES_PORT (default 5432) can be changed in .env if occupied.
 Both published ports bind to local loopback; Java has no published host port.
-This is a local HTTP deployment. HTTPS, public access and Rocky Linux operation are the next phase.
+This is a local HTTP deployment. HTTPS, public access and Rocky Linux operation are outside this release.
 
 Browser → nginx web:8080 → Java api:8080 → postgres:5432
 
@@ -206,7 +236,7 @@ Choose add, list, or exit. The console has its own in-memory library, separate f
 
 ```bash
 mvn verify
-java -jar target/volumes-0.1.0-SNAPSHOT.jar
+java -jar target/volumes-0.1.0.jar
 ```
 
 `mvn test` runs the tests without packaging. Docker must be running: Catalog, HTTP, and schema tests use disposable PostgreSQL containers through Testcontainers, and the packaged smoke check runs the real Compose configuration under a unique temporary project and checks persistence across an API restart and database container recreation. It removes only that temporary project and its volume afterward. None of these checks uses the development Compose database. Tests cover domain rules, catalog concurrency and updates, console behavior, and real HTTP requests. CI also runs scripted console and packaged-API smoke checks.

@@ -16,7 +16,7 @@ import uuid
 
 
 ROOT = Path(__file__).resolve().parents[1]
-JAR = ROOT / "target/volumes-0.1.0-SNAPSHOT.jar"
+JAR = ROOT / "target/volumes-0.1.0.jar"
 
 
 class ApiSession:

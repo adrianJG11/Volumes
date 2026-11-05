@@ -34,6 +34,8 @@ jobs:
         run: |
           docker info > /dev/null
           docker compose version
+      - name: Verify saved offline recommender pilot
+        run: python3 -m unittest discover -s recommender -v
       - name: Verify with Maven
         run: mvn --batch-mode --no-transfer-progress verify
       - name: Run console application
